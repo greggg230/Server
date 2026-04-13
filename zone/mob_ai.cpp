@@ -2086,20 +2086,39 @@ bool Mob::Rampage(ExtraAttackOptions *opts)
 	}
 
 	m_specialattacks = eSpecialAttacks::Rampage;
+
+	// Clean up stale entries (dead, corpse, or no longer in zone) before iterating
+	RampageArray.erase(
+		std::remove_if(
+			RampageArray.begin(),
+			RampageArray.end(),
+			[this](uint16 id) {
+				if (id == 0) {
+					return true;
+				}
+				Mob *m = entity_list.GetMob(id);
+				if (!m) {
+					return true;
+				}
+				if (m->IsCorpse()) {
+					return true;
+				}
+				if (m->IsClient() && m->CastToClient()->dead) {
+					return true;
+				}
+				return false;
+			}
+		),
+		RampageArray.end()
+	);
+
 	for (int i = 0; i < RampageArray.size(); i++) {
 		if (index_hit >= rampage_targets) {
 			break;
 		}
-		// range is important
 		Mob *m_target = entity_list.GetMob(RampageArray[i]);
 		if (m_target) {
 			if (m_target == GetTarget()) {
-				continue;
-			}
-
-			if (m_target->IsCorpse()) {
-				LogAggroDetail("[{}] is on [{}]'s rampage list", m_target->GetCleanName(), GetCleanName());
-				RemoveFromRampageList(m_target, true);
 				continue;
 			}
 
