@@ -2058,12 +2058,9 @@ void Mob::RemoveFromRampageList(Mob* mob, bool remove_feigned)
 			)
 		)
 	) {
-		auto it = RampageArray.begin();
-		while (it != RampageArray.end()) {
-			if (mob->GetID() == *it) {
-				it = RampageArray.erase(it);
-			} else {
-				++it;
+		for (int i = 0; i < RampageArray.size(); i++) {
+			if (mob->GetID() == RampageArray[i]) {
+				RampageArray[i] = 0;
 			}
 		}
 	}
