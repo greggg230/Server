@@ -224,12 +224,24 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 					case SpellType_Slow:
 					case SpellType_Debuff: {
 						Mob * debuffee = GetHateRandom();
-						if (debuffee && manaR >= 10 && (bInnates || zone->random.Roll(70)) &&
-								debuffee->CanBuffStack(AIspells[i].spellid, GetLevel(), true) >= 0) {
-							if (!checked_los) {
-								if (!CheckLosFN(debuffee))
-									return false;
-								checked_los = true;
+						// For AoE hate-list debuffs, skip CanBuffStack and LoS checks on the
+						// random target — the debuff hits everyone on the hate list, not just
+						// that one mob. Per-target LoS is enforced inside HateList::SpellCast().
+						// CanBuffStack on one random target would suppress the entire AoE if
+						// that target already has the debuff, even though other targets may not.
+						bool is_ae_hatelist = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
+						                       spells[AIspells[i].spellid].target_type == ST_HateList);
+						if (
+							debuffee && manaR >= 10 &&
+							(bInnates || zone->random.Roll(70)) &&
+							(is_ae_hatelist || debuffee->CanBuffStack(AIspells[i].spellid, GetLevel(), true) >= 0)
+							) {
+							if (!is_ae_hatelist) {
+								if (!checked_los) {
+									if (!CheckLosFN(debuffee))
+										return false;
+									checked_los = true;
+								}
 							}
 							AIDoSpellCast(i, debuffee, mana_cost);
 							return true;
@@ -237,14 +249,25 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						break;
 					}
 					case SpellType_Nuke: {
+						// For AoE hate-list spells, several per-center-target checks are irrelevant:
+						//   - LoS to the center target: per-target LoS is enforced inside
+						//     HateList::SpellCast() before each SpellOnTarget() call.
+						//   - CanBuffStack on `tar`: the AoE is not placing a buff on `tar` alone.
+						//     If `tar` is invulnerable, has full buff slots, or has a stacking conflict
+						//     with one of its buffs, the NPC would skip the AoE entirely — wrong.
+						bool is_ae_hatelist = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
+						                       spells[AIspells[i].spellid].target_type == ST_HateList);
 						if (
-							manaR >= 10 && (bInnates || (zone->random.Roll(70)
-							&& tar->CanBuffStack(AIspells[i].spellid, GetLevel(), false) >= 0)) // saying it's a nuke here, AI shouldn't care too much if overwriting
+							manaR >= 10 &&
+							(bInnates || zone->random.Roll(70)) &&
+							(is_ae_hatelist || tar->CanBuffStack(AIspells[i].spellid, GetLevel(), false) >= 0)
 							) {
-							if(!checked_los) {
-								if(!CheckLosFN(tar))
-									return(false);	//cannot see target... we assume that no spell is going to work since we will only be casting detrimental spells in this call
-								checked_los = true;
+							if (!is_ae_hatelist) {
+								if(!checked_los) {
+									if(!CheckLosFN(tar))
+										return(false);	//cannot see target... we assume that no spell is going to work since we will only be casting detrimental spells in this call
+									checked_los = true;
+								}
 							}
 							AIDoSpellCast(i, tar, mana_cost);
 							return true;

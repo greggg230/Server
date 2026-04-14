@@ -847,6 +847,13 @@ void HateList::SpellCast(Mob *caster, uint32 spell_id, float range, Mob* ae_cent
 		Mob *cur = entity_list.GetMobID((*iter));
 		if (cur)
 		{
+			// Mirror the per-target LoS check that AESpell() performs for other AoE types.
+			// Only detrimental spells enforce LoS; beneficial AoEs skip it (matching AESpell behavior).
+			// npc_no_los bypasses LoS enforcement entirely (same flag respected in AESpell).
+			if (IsDetrimentalSpell(spell_id) && !spells[spell_id].npc_no_los && (!caster->CheckLosFN(cur) || !caster->CheckWaterLoS(cur))) {
+				iter++;
+				continue;
+			}
 			caster->SpellOnTarget(spell_id, cur);
 		}
 		iter++;
