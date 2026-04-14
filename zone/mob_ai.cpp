@@ -246,9 +246,9 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						break;
 					}
 					case SpellType_Nuke: {
-						// For AoE hate-list spells, several per-target checks on `tar` are irrelevant:
-						//   - LoS to the center target: the spell hits the entire hate list and per-target
-						//     LoS is evaluated in AESpell() / HateList::SpellCast().
+						// For AoE hate-list spells, several per-center-target checks are irrelevant:
+						//   - LoS to the center target: per-target LoS is enforced inside
+						//     HateList::SpellCast() before each SpellOnTarget() call.
 						//   - CanBuffStack on `tar`: the AoE is not placing a buff on `tar` alone.
 						//     If `tar` is invulnerable, has full buff slots, or has a stacking conflict
 						//     with one of its buffs, the NPC would skip the AoE entirely — wrong.

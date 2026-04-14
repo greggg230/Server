@@ -774,12 +774,20 @@ bool Mob::DoCastingChecksOnTarget(bool check_on_casting, int32 spell_id, Mob *sp
 			spells[spell_id].target_type == ST_AECaster ||
 			spells[spell_id].target_type == ST_Ring ||
 			spells[spell_id].target_type == ST_Beam ||
-			// AoE hate-list spells hit every mob on the hate list, not just the center target.
-			// Running per-target restriction checks (pcnpc_only_flag, level caps, etc.) against
-			// the single center target is wrong and would prevent the spell from firing when
-			// the center target is invulnerable or otherwise restricted.
-			spells[spell_id].target_type == ST_AETargetHateList ||
 			spells[spell_id].target_type == ST_HateList) {
+			return true;
+		}
+
+		// AoE hate-list spells hit every mob on the hate list, not just the center target.
+		// Per-target restriction checks (pcnpc_only_flag, level caps, etc.) against the single
+		// center target are wrong and would suppress the cast when the center target is
+		// invulnerable or otherwise restricted.
+		// However, ranged ST_AETargetHateList spells still need a valid center target so
+		// DetermineSpellTargets() / SpellFinished() can resolve the AoE origin — a null
+		// spell_target with range > 0 will cause the cast to fail there anyway, so fall
+		// through and let the normal null-target handling deal with it.
+		if (spells[spell_id].target_type == ST_AETargetHateList &&
+			(spells[spell_id].range <= 0 || spell_target != nullptr)) {
 			return true;
 		}
 
@@ -2511,9 +2519,10 @@ bool Mob::SpellFinished(uint16 spell_id, Mob *spell_target, CastingSlot slot, in
 	}
 
 	// check line of sight to target if it's a detrimental spell.
-	// AoE hate-list spells (ST_AETargetHateList, ST_HateList) skip this check because they hit the
-	// entire hate list -- LoS is evaluated per-target inside AESpell() in effects.cpp.
-	// Blocking the whole cast because the center target is temporarily occluded is wrong.
+	// AoE hate-list spells (ST_AETargetHateList, ST_HateList) skip this center-target LoS check.
+	// Per-target LoS for these spells is enforced inside HateList::SpellCast() before each
+	// SpellOnTarget() call. Blocking the whole cast because the center target is temporarily
+	// occluded is wrong when other valid targets are clearly visible.
 	bool ae_hatelist_spell = (spells[spell_id].target_type == ST_AETargetHateList ||
 	                          spells[spell_id].target_type == ST_HateList);
 	if (!ae_hatelist_spell && !spells[spell_id].npc_no_los && spell_target && IsDetrimentalSpell(spell_id) && (!CheckLosFN(spell_target) || !CheckWaterLoS(spell_target)) && !IsHarmonySpell(spell_id) && spells[spell_id].target_type != ST_TargetOptional)
