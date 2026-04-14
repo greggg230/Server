@@ -232,8 +232,9 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						bool is_ae_hatelist = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
 						                       spells[AIspells[i].spellid].target_type == ST_HateList);
 						if (
-							debuffee && manaR >= 10 && (bInnates || (zone->random.Roll(70)
-							&& (is_ae_hatelist || debuffee->CanBuffStack(AIspells[i].spellid, GetLevel(), false) >= 0)))
+							debuffee && manaR >= 10 &&
+							(bInnates || zone->random.Roll(70)) &&
+							(is_ae_hatelist || debuffee->CanBuffStack(AIspells[i].spellid, GetLevel(), false) >= 0)
 							) {
 							if (!is_ae_hatelist) {
 								if (!checked_los) {
@@ -257,8 +258,9 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						bool is_ae_hatelist = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
 						                       spells[AIspells[i].spellid].target_type == ST_HateList);
 						if (
-							manaR >= 10 && (bInnates || (zone->random.Roll(70)
-							&& (is_ae_hatelist || tar->CanBuffStack(AIspells[i].spellid, GetLevel(), false) >= 0))) // saying it's a nuke here, AI shouldn't care too much if overwriting
+							manaR >= 10 &&
+							(bInnates || zone->random.Roll(70)) &&
+							(is_ae_hatelist || tar->CanBuffStack(AIspells[i].spellid, GetLevel(), false) >= 0)
 							) {
 							if (!is_ae_hatelist) {
 								if(!checked_los) {
