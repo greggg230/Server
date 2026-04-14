@@ -224,16 +224,23 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 					case SpellType_Slow:
 					case SpellType_Debuff: {
 						Mob * debuffee = GetHateRandom();
-						// CanBuffStack is intentionally not checked here. Blocking the cast because
-						// the target already has the debuff would prevent refreshing an expiring slow/
-						// debuff, and would suppress re-application of spells that deal direct damage
-						// on landing even when the buff component is already present. The NPC's
-						// spell recast timer is the appropriate rate-limiter for these spells.
-						if (debuffee && manaR >= 10 && (bInnates || zone->random.Roll(70))) {
-							if (!checked_los) {
-								if (!CheckLosFN(debuffee))
-									return false;
-								checked_los = true;
+						// For AoE hate-list debuffs, skip CanBuffStack and LoS checks on the
+						// random target — the debuff hits everyone on the hate list, not just
+						// that one mob. Per-target LoS is enforced inside HateList::SpellCast().
+						// CanBuffStack on one random target would suppress the entire AoE if
+						// that target already has the debuff, even though other targets may not.
+						bool is_ae_hatelist = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
+						                       spells[AIspells[i].spellid].target_type == ST_HateList);
+						if (
+							debuffee && manaR >= 10 && (bInnates || (zone->random.Roll(70)
+							&& (is_ae_hatelist || debuffee->CanBuffStack(AIspells[i].spellid, GetLevel(), false) >= 0)))
+							) {
+							if (!is_ae_hatelist) {
+								if (!checked_los) {
+									if (!CheckLosFN(debuffee))
+										return false;
+									checked_los = true;
+								}
 							}
 							AIDoSpellCast(i, debuffee, mana_cost);
 							return true;
