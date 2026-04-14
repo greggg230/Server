@@ -237,14 +237,24 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						break;
 					}
 					case SpellType_Nuke: {
+						// For AoE hate-list spells, several per-target checks on `tar` are irrelevant:
+						//   - LoS to the center target: the spell hits the entire hate list and per-target
+						//     LoS is evaluated in AESpell() / HateList::SpellCast().
+						//   - CanBuffStack on `tar`: the AoE is not placing a buff on `tar` alone.
+						//     If `tar` is invulnerable, has full buff slots, or has a stacking conflict
+						//     with one of its buffs, the NPC would skip the AoE entirely — wrong.
+						bool is_ae_hatelist = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
+						                       spells[AIspells[i].spellid].target_type == ST_HateList);
 						if (
 							manaR >= 10 && (bInnates || (zone->random.Roll(70)
-							&& tar->CanBuffStack(AIspells[i].spellid, GetLevel(), false) >= 0)) // saying it's a nuke here, AI shouldn't care too much if overwriting
+							&& (is_ae_hatelist || tar->CanBuffStack(AIspells[i].spellid, GetLevel(), false) >= 0))) // saying it's a nuke here, AI shouldn't care too much if overwriting
 							) {
-							if(!checked_los) {
-								if(!CheckLosFN(tar))
-									return(false);	//cannot see target... we assume that no spell is going to work since we will only be casting detrimental spells in this call
-								checked_los = true;
+							if (!is_ae_hatelist) {
+								if(!checked_los) {
+									if(!CheckLosFN(tar))
+										return(false);	//cannot see target... we assume that no spell is going to work since we will only be casting detrimental spells in this call
+									checked_los = true;
+								}
 							}
 							AIDoSpellCast(i, tar, mana_cost);
 							return true;

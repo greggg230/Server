@@ -1202,7 +1202,7 @@ void EntityList::AESpell(
 				continue;
 			}
 
-			if (center_mob && !spells[spell_id].npc_no_los && !center_mob->CheckLosFN(current_mob)) {
+			if (center_mob && !spells[spell_id].npc_no_los && !caster_mob->CheckLosFN(current_mob)) {
 				continue;
 			}
 
