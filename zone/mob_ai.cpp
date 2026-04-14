@@ -234,7 +234,7 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						if (
 							debuffee && manaR >= 10 &&
 							(bInnates || zone->random.Roll(70)) &&
-							(is_ae_hatelist || debuffee->CanBuffStack(AIspells[i].spellid, GetLevel(), false) >= 0)
+							(is_ae_hatelist || debuffee->CanBuffStack(AIspells[i].spellid, GetLevel(), true) >= 0)
 							) {
 							if (!is_ae_hatelist) {
 								if (!checked_los) {
