@@ -1,9 +1,28 @@
-#include <vector>
+/*	EQEmu: EQEmulator
+
+	Copyright (C) 2001-2026 EQEmu Development Team
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "zone.h"
-#include "../common/repositories/loottable_repository.h"
-#include "../common/repositories/loottable_entries_repository.h"
-#include "../common/repositories/lootdrop_repository.h"
-#include "../common/repositories/lootdrop_entries_repository.h"
+
+#include "common/repositories/lootdrop_entries_repository.h"
+#include "common/repositories/lootdrop_repository.h"
+#include "common/repositories/loottable_entries_repository.h"
+#include "common/repositories/loottable_repository.h"
+
+#include <vector>
 
 void Zone::LoadLootTables(const std::vector<uint32> in_loottable_ids)
 {
@@ -211,7 +230,7 @@ LoottableRepository::Loottable *Zone::GetLootTable(const uint32 loottable_id)
 {
 	for (auto &e: m_loottables) {
 		if (e.id == loottable_id) {
-			if (!content_service.DoesPassContentFiltering(
+			if (!WorldContentService::Instance()->DoesPassContentFiltering(
 				ContentFlags{
 					.min_expansion = e.min_expansion,
 					.max_expansion = e.max_expansion,
@@ -249,7 +268,7 @@ LootdropRepository::Lootdrop Zone::GetLootdrop(const uint32 lootdrop_id) const
 {
 	for (const auto &e: m_lootdrops) {
 		if (e.id == lootdrop_id) {
-			if (!content_service.DoesPassContentFiltering(
+			if (!WorldContentService::Instance()->DoesPassContentFiltering(
 				ContentFlags{
 					.min_expansion = e.min_expansion,
 					.max_expansion = e.max_expansion,
@@ -276,7 +295,7 @@ std::vector<LootdropEntriesRepository::LootdropEntries> Zone::GetLootdropEntries
 	std::vector<LootdropEntriesRepository::LootdropEntries> entries = {};
 	for (const auto &e: m_lootdrop_entries) {
 		if (e.lootdrop_id == lootdrop_id) {
-			if (!content_service.DoesPassContentFiltering(
+			if (!WorldContentService::Instance()->DoesPassContentFiltering(
 				ContentFlags{
 					.min_expansion = e.min_expansion,
 					.max_expansion = e.max_expansion,
@@ -368,18 +387,22 @@ void Zone::LoadLootDrops(const std::vector<uint32> in_lootdrop_ids)
 			m_lootdrops.emplace_back(e);
 
 			// add lootdrop entries
-			for (const auto &f: lootdrop_entries) {
-				if (e.id == f.lootdrop_id) {
+			// add lootdrop entries
+			for (const auto &h: lootdrop_entries) {
+				if (e.id == h.lootdrop_id) {
 
 					// check if lootdrop entry already exists in memory
 					has_entry = false;
-					for (const auto &g: m_lootdrop_entries) {
-						if (f.lootdrop_id == g.lootdrop_id && f.item_id == g.item_id && f.multiplier == g.multiplier) {
+					for (const auto &i: m_lootdrop_entries) {
+						if (h.lootdrop_id == i.lootdrop_id && h.item_id == i.item_id) {
 							has_entry = true;
 							break;
 						}
 					}
 
+					if (!has_entry) {
+						m_lootdrop_entries.emplace_back(h);
+					}
 				}
 			}
 		}

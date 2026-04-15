@@ -1,21 +1,20 @@
-/*	EQEMu: Everquest Server Emulator
-	Copyright (C) 2001-2016 EQEMu Development Team (http://eqemulator.org)
+/*	EQEmu: EQEmulator
+
+	Copyright (C) 2001-2026 EQEmu Development Team
 
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation; version 2 of the License.
+	the Free Software Foundation; either version 3 of the License, or
+	(at your option) any later version.
 
 	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY except by those people which sell it, which
-	are required to give you total support for your newly bought product;
-	without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with this program; if not, write to the Free Software
-	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+	along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
-
 #ifndef RULE_CATEGORY
 #define RULE_CATEGORY(name)
 #endif
@@ -54,7 +53,7 @@ RULE_INT(Character, CorpseDecayTime, 604800000, "Time after which the corpse dec
 RULE_INT(Character, EmptyCorpseDecayTime, 10800000, "Time after which an empty corpse decays (milliseconds) DEFAULT: 10800000 (3 Hours)")
 RULE_INT(Character, CorpseResTime, 10800000, "Time after which the corpse can no longer be resurrected (milliseconds) DEFAULT: 10800000 (3 Hours)")
 RULE_INT(Character, DuelCorpseResTime, 600000, "Time before cant res corpse after a duel (milliseconds) DEFAULT: 600000 (10 Minutes)")
-RULE_INT(Character, CorpseOwnerOnlineTime, 30000, "How often corpse will check if its owner is online DEFAULT: 30000 (30 Seconds)")
+RULE_INT(Character, CorpseOwnerOnlineCheckTime, 300, "How often corpse will check if its owner is online DEFAULT: 300 (5 minutes)")
 RULE_BOOL(Character, LeaveCorpses, true, "Setting whether you leave a corpse behind")
 RULE_BOOL(Character, LeaveNakedCorpses, false, "Setting whether you leave a corpse without items")
 RULE_INT(Character, MaxDraggedCorpses, 2, "Maximum number of corpses you can drag at once")
@@ -156,6 +155,7 @@ RULE_REAL(Character, TradeskillUpPottery, 4.0, "Pottery skillup rate adjustment.
 RULE_REAL(Character, TradeskillUpResearch, 1.0, "Research skillup rate adjustment. Lower is faster")
 RULE_REAL(Character, TradeskillUpTinkering, 2.0, "Tinkering skillup rate adjustment. Lower is faster")
 RULE_REAL(Character, TradeskillUpTailoring, 2.0, "Tailoring skillup rate adjustment. Lower is faster")
+RULE_REAL(Character, TradeskillUpMinChance, 2.5, "Determines the minimum percentage chance to gain a skill increase from a tradeskill.  Cannot go below 2.5")
 RULE_BOOL(Character, MarqueeHPUpdates, false, "Will show health percentage in center of screen if health lesser than 100%")
 RULE_INT(Character, IksarCommonTongue, 95, "Starting value for Common Tongue for Iksars")
 RULE_INT(Character, OgreCommonTongue, 95, "Starting value for Common Tongue for Ogres")
@@ -232,6 +232,12 @@ RULE_BOOL(Character, SneakAlwaysSucceedOver100, false, "When sneak skill is over
 RULE_INT(Character, BandolierSwapDelay, 0, "Bandolier swap delay in milliseconds, default is 0")
 RULE_BOOL(Character, EnableHackedFastCampForGM, false, "Enables hacked fast camp for GM clients, if the GM doesn't have a hacked client they'll camp like normal")
 RULE_BOOL(Character, AlwaysAllowNameChange, false, "Enable this option to allow /changename to work without enabling a name change via scripts.")
+RULE_BOOL(Character, EnableAutoAFK, false, "Enable or disable the auto AFK feature, cuts down on packet spam")
+RULE_BOOL(Character, AutoIdleFilterPackets, true, "Enable or disable filtering packets when auto AFK is enabled, heavily cuts down on packet spam in zones with lots of players")
+RULE_INT(Character, SecondsBeforeIdleCombatZone, 600, "Seconds before a player is considered idle in combat zones (600 = 10 minutes)")
+RULE_INT(Character, SecondsBeforeIdleNonCombatZone, 60, "Seconds before a player is considered idle in non-combat zones (60 = 1 minute)")
+RULE_INT(Character, SecondsBeforeAFKCombatZone, 1800, "Seconds before a player is considered AFK in combat zones (1800 = 30 minutes)")
+RULE_INT(Character, SecondsBeforeAFKNonCombatZone, 600, "Seconds before a player is considered AFK in non-combat zones (600 = 10 minutes)")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Mercs)
@@ -261,6 +267,7 @@ RULE_INT(Guild, TributeTime, 600000, "Time in ms for guild tributes.  Default is
 RULE_INT(Guild, TributeTimeRefreshInterval, 180000, "Time in ms to send all guild members a Tribute Time refresh. Default is 3 mins.")
 RULE_INT(Guild, TributePlatConversionRate, 10, "The conversion rate of platinum donations.  Default is 10 guild favor to 1 platinum.")
 RULE_BOOL(Guild, UseCharacterMaxLevelForGuildTributes, true, "Guild Tributes will adhere to Character:MaxLevel.  Default is true.")
+RULE_BOOL(Guild, EnableLFGuild, false, "Enable the LFGuild system (Requires queryserv)")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Skills)
@@ -290,6 +297,7 @@ RULE_BOOL(Pets, ClientPetsUseOwnerNameInLastName, true, "Disable this to keep cl
 RULE_BOOL(Pets, CanTakeNoDrop, false, "Setting whether anyone can give no-drop items to pets")
 RULE_INT(Pets, PetTauntRange, 150, "Range at which a pet will taunt targets.")
 RULE_BOOL(Pets, AlwaysAllowPetRename, false, "Enable this option to allow /changepetname to work without enabling a pet name change via scripts.")
+RULE_BOOL(Pets, PetsRequireLoS, false, "Whether or not pets require line of sight to be told to attack their target")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(GM)
@@ -345,6 +353,7 @@ RULE_STRING(World, SupportedClients, "RoF2", "Comma-delimited list of clients to
 RULE_STRING(World, CustomFilesKey, "", "Enable if the server requires custom files and sends a key to validate. Empty string to disable. Example: eqcustom_v1")
 RULE_STRING(World, CustomFilesUrl, "github.com/knervous/eqnexus/releases", "URL to display at character select if client is missing custom files")
 RULE_INT(World, CustomFilesAdminLevel, 20, "Admin level at which custom file key is not required when CustomFilesKey is specified")
+RULE_BOOL(World, RealTimeCalculateGuilds, false, "(Temp feature flag) If true, guilds will be calculated in real time instead of at zone boot. This is a performance hit but allows for more dynamic guilds.")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Zone)
@@ -379,6 +388,7 @@ RULE_BOOL(Zone, StateSaveEntityVariables, true, "Set to true if you want buffs t
 RULE_BOOL(Zone, StateSaveBuffs, true, "Set to true if you want buffs to be saved on shutdown")
 RULE_INT(Zone, StateSaveClearDays, 7, "Clears state save data older than this many days")
 RULE_BOOL(Zone, StateSavingOnShutdown, true, "Set to true if you want zones to save state on shutdown (npcs, corpses, loot, entity variables, buffs etc.)")
+RULE_INT(Zone, UpdateWhoTimer, 120, "Seconds between updates to /who list, CLE stale timer")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Map)
@@ -388,9 +398,10 @@ RULE_BOOL(Map, MobZVisualDebug, false, "Displays spell effects determining wheth
 RULE_BOOL(Map, MobPathingVisualDebug, false, "Displays nodes in pathing points in realtime to help with visual debugging")
 RULE_REAL(Map, FixPathingZMaxDeltaSendTo, 20, "At runtime in SendTo: maximum change in Z to allow the BestZ code to apply")
 RULE_INT(Map, FindBestZHeightAdjust, 1, "Adds this to the current Z before seeking the best Z position")
-RULE_BOOL(Map, CheckForLoSCheat, false, "Runs predefined zone checks to check for LoS cheating through doors and such.")
-RULE_BOOL(Map, EnableLoSCheatExemptions, false, "Enables exemptions for the LoS Cheat check.")
-RULE_REAL(Map, RangeCheckForLoSCheat, 20.0, "Default 20.0. Range to check if one is within range of a door.")
+RULE_BOOL(Map, CheckForDoorLoSCheat, true, "Runs LoS checks to prevent cheating through doors.")
+RULE_BOOL(Map, EnableLoSCheatExemptions, false, "Enables exemptions for the LoS Cheat check. Must modify source to create these.")
+RULE_REAL(Map, RangeCheckForDoorLoSCheat, 250.0, "Default 250.0. Range to check if a door is blocking LoS from the target.")
+RULE_STRING(Map, ZonesToCheckDoorCheat, "89,103", "Zones that will check for the door LoS cheat. You can leave it blank to disable, 'all' to check all zones or use a comma-delimited list of zones. Default Sebilis & Chardok")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Pathing)
@@ -607,7 +618,7 @@ RULE_INT(Combat, SneakPullAssistRange, 400, "Modified range of assist for sneak 
 RULE_BOOL(Combat, Classic2HBAnimation, false, "2HB will use the 2 hand piercing animation instead of the overhead slashing animation")
 RULE_BOOL(Combat, ArcheryConsumesAmmo, true, "Set to false to disable Archery Ammo Consumption")
 RULE_BOOL(Combat, ThrowingConsumesAmmo, true, "Set to false to disable Throwing Ammo Consumption")
-RULE_BOOL(Combat, UseLiveRiposteMechanics, false, "Set to true to disable SPA 173 SE_RiposteChance from making those with the effect on them immune to enrage, can longer riposte from a riposte.")
+RULE_BOOL(Combat, UseLiveRiposteMechanics, false, "Set to true to disable SPA 173 SpellEffect::RiposteChance from making those with the effect on them immune to enrage, can longer riposte from a riposte.")
 RULE_INT(Combat, FrontalStunImmunityClasses, 0, "Bitmask for Classes than have frontal stun immunity, No Races (0) by default.")
 RULE_BOOL(Combat, NPCsUseFrontalStunImmunityClasses, false, "Enable or disable NPCs using frontal stun immunity Classes from Combat:FrontalStunImmunityClasses, false by default.")
 RULE_INT(Combat, FrontalStunImmunityRaces, 512, "Bitmask for Races than have frontal stun immunity, Ogre (512) only by default.")
@@ -814,6 +825,7 @@ RULE_INT(Bots, PercentChanceToCastDispel, 75, "The chance for a bot to attempt t
 RULE_INT(Bots, PercentChanceToCastInCombatBuff, 75, "The chance for a bot to attempt to cast the given spell type in combat. Default 75%.")
 RULE_INT(Bots, PercentChanceToCastHateLine, 75, "The chance for a bot to attempt to cast the given spell type in combat. Default 75%.")
 RULE_INT(Bots, PercentChanceToCastMez, 75, "The chance for a bot to attempt to cast the given spell type in combat. Default 75%.")
+RULE_INT(Bots, PercentChanceToCastAEMez, 40, "The chance for a bot to attempt to cast the given spell type in combat. Default 40%.")
 RULE_INT(Bots, PercentChanceToCastSlow, 75, "The chance for a bot to attempt to cast the given spell type in combat. Default 75%.")
 RULE_INT(Bots, PercentChanceToCastDebuff, 75, "The chance for a bot to attempt to cast the given spell type in combat. Default 75%.")
 RULE_INT(Bots, PercentChanceToCastCure, 75, "The chance for a bot to attempt to cast the given spell type in combat. Default 75%.")
@@ -825,8 +837,6 @@ RULE_INT(Bots, MinDelayBetweenInCombatCastAttempts, 500, "The minimum delay in m
 RULE_INT(Bots, MaxDelayBetweenInCombatCastAttempts, 2000, "The maximum delay in milliseconds between cast attempts while in-combat. This is rolled between the min and max. Default 2500ms.")
 RULE_INT(Bots, MinDelayBetweenOutCombatCastAttempts, 1000, "The minimum delay in milliseconds between cast attempts while out-of-combat. This is rolled between the min and max. Default 1000ms.")
 RULE_INT(Bots, MaxDelayBetweenOutCombatCastAttempts, 2500, "The maximum delay in milliseconds between cast attempts while out-of-combat. This is rolled between the min and max. Default 2500ms.")
-RULE_INT(Bots, MezChance, 60, "60 Default. Chance for a bot to attempt to Mez a target after validating it is eligible.")
-RULE_INT(Bots, AEMezChance, 35, "35 Default. Chance for a bot to attempt to AE Mez targets after validating they are eligible.")
 RULE_INT(Bots, MezSuccessDelay, 2500, "2500 (2.5 sec) Default. Delay between successful Mez attempts.")
 RULE_INT(Bots, AEMezSuccessDelay, 5000, "5000 (5 sec) Default. Delay between successful AEMez attempts.")
 RULE_INT(Bots, MezFailDelay, 1250, "1250 (1.25 sec) Default. Delay between failed Mez attempts.")
@@ -843,7 +853,7 @@ RULE_BOOL(Bots, AllowCastAAs, true, "If enabled, players can use ^cast aa to cas
 RULE_BOOL(Bots, AllowMagicianEpicPet, false, "If enabled, magician bots can summon their epic pets following the rules AllowMagicianEpicPetLevel")
 RULE_INT(Bots, AllowMagicianEpicPetLevel, 50, "If AllowMagicianEpicPet is enabled, bots can start using their epic pets at this level")
 RULE_INT(Bots, RequiredMagicianEpicPetItemID, 28034, "If AllowMagicianEpicPet is enabled and this is set, bots will be required to have this item ID equipped to cast their epic. Takes in to account AllowMagicianEpicPetLevel as well. Set to 0 to disable requirement")
-RULE_STRING(Bots, EpicPetSpellName, "", "'teleport_zone' in the spell to be cast for epic pets. This must be in their spell list to cast.")
+RULE_STRING(Bots, EpicPetSpellName, "", "'teleport_zone' in the spell to be cast for epic pets. This must be in their usable spell list to cast. Empty uses Manifest Elements - 'SumMageMultiElement'")
 RULE_INT(Bots, ReclaimEnergySpellID, 331, "Spell ID for reclaim energy when using ^petsettype. Default 331")
 RULE_BOOL(Bots, UseSpellPulling, true, "If enabled bots will use a spell to pull when within range. Uses PullSpellID.")
 RULE_INT(Bots, PullSpellID, 5225, "Default 5225 - Throw Stone. Spell that will be cast to pull by bots")
@@ -854,15 +864,7 @@ RULE_BOOL(Bots, BotArcheryConsumesAmmo, true, "Set to false to disable Archery A
 RULE_BOOL(Bots, BotThrowingConsumesAmmo, true, "Set to false to disable Throwing Ammo Consumption")
 RULE_INT(Bots, StackSizeMin, 20, "20 Default. -1 to disable and use default max stack size. Minimum stack size to give a bot (Arrows/Throwing).")
 RULE_INT(Bots, HasOrMayGetAggroThreshold, 90, "90 Default. Percent threshold of total hate where bots will stop casting spells that generate hate if they are set to try to not pull aggro via spells.")
-RULE_REAL(Bots, LowerMeleeDistanceMultiplier, 0.35, "Closest % of the hit box a melee bot will get to the target. Default 0.35")
-RULE_REAL(Bots, LowerTauntingMeleeDistanceMultiplier, 0.25, "Closest % of the hit box a taunting melee bot will get to the target. Default 0.25")
-RULE_REAL(Bots, LowerMaxMeleeRangeDistanceMultiplier, 0.80, "Closest % of the hit box a max melee range melee bot will get to the target. Default 0.80")
-RULE_REAL(Bots, UpperMeleeDistanceMultiplier, 0.55, "Furthest % of the hit box a melee bot will get from the target. Default 0.55")
-RULE_REAL(Bots, UpperTauntingMeleeDistanceMultiplier, 0.45, "Furthest % of the hit box a taunting melee bot will get from the target. Default 0.45")
-RULE_REAL(Bots, UpperMaxMeleeRangeDistanceMultiplier, 0.95, "Furthest % of the hit box a max melee range melee bot will get from the target. Default 0.95")
 RULE_BOOL(Bots, DisableSpecialAbilitiesAtMaxMelee, true, "If true, when bots are at max melee distance, special abilities including taunt will be disabled. Default True.")
-RULE_BOOL(Bots, TauntingBotsFollowTopHate, true, "True Default. If true, bots that are taunting will attempt to stick with whoever currently is top hate.")
-RULE_INT(Bots, DistanceTauntingBotsStickMainHate, 10, "If TauntingBotsFollowTopHate is enabled, this is the distance bots will try to stick to whoever currently is Top Hate.")
 RULE_INT(Bots, MinJitterTimer, 500, "Minimum ms between bot movement jitter checks.")
 RULE_INT(Bots, MaxJitterTimer, 2500, "Maximum ms between bot movement jitter checks. Set to 0 to disable timer checks.")
 RULE_BOOL(Bots, PreventBotCampOnFD, true, "True Default. If true, players will not be able to camp bots while feign death.")
@@ -882,6 +884,7 @@ RULE_INT(Bots, MinStatusToBypassSpawnLimit, 100, "Minimum status to bypass spawn
 RULE_INT(Bots, MinStatusBypassSpawnLimit, 120, "Spawn limit with status bypass. Default 120.")
 RULE_INT(Bots, MinStatusToBypassCreateLimit, 100, "Minimum status to bypass create limit. Default 100.")
 RULE_INT(Bots, MinStatusBypassCreateLimit, 120, "Create limit with status bypass. Default 120.")
+RULE_INT(Bots, MinStatusToBypassBotLevelRequirement, 100, "Minimum status to bypass level requirement for bots. Default 100.")
 RULE_BOOL(Bots, EnableBotTGB, true, "If enabled bots will cast group buffs as TGB.")
 RULE_BOOL(Bots, DoResponseAnimations, true, "If enabled bots will do animations to certain responses or commands.")
 RULE_INT(Bots, DefaultFollowDistance, 20, "Default 20. Distance a bot will follow behind.")
@@ -903,6 +906,7 @@ RULE_STRING(Bots, ZonesWithForcedSpawnLimits, "", "Comma-delimited list of zones
 RULE_STRING(Bots, ZoneForcedSpawnLimits, "", "Comma-delimited list of forced spawn limits for zones.")
 RULE_INT(Bots, AICastSpellTypeDelay, 100, "Delay in milliseconds between AI cast attempts for each spell type. Default 100ms")
 RULE_INT(Bots, AICastSpellTypeHeldDelay, 2500, "Delay in milliseconds between AI cast attempts for each spell type that is held or disabled. Default 2500ms (2.5s)")
+RULE_BOOL(Bots, BotsRequireLoS, true, "Whether or not bots require line of sight to be told to attack their target")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Chat)
@@ -926,6 +930,7 @@ RULE_BOOL(Chat, AutoInjectSaylinksToSay, true, "Automatically injects saylinks i
 RULE_BOOL(Chat, AutoInjectSaylinksToClientMessage, true, "Automatically injects saylinks into dialogue that has [brackets in them]")
 RULE_BOOL(Chat, QuestDialogueUsesDialogueWindow, false, "Pipes all quest dialogue to dialogue window")
 RULE_BOOL(Chat, DialogueWindowAnimatesNPCsIfNoneSet, true, "If there is no animation specified in the dialogue window markdown then it will choose a random greet animation such as wave or salute")
+RULE_BOOL(Chat, AlwaysCaptureCommandText, false, "Consume command text (# and ^ by default), regardless of which channel it is sent to")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Merchant)
@@ -1073,6 +1078,7 @@ RULE_CATEGORY(Logging)
 RULE_BOOL(Logging, PrintFileFunctionAndLine, false, "Ex: [World Server] [net.cpp::main:309] Loading variables...")
 RULE_BOOL(Logging, WorldGMSayLogging, true, "Relay worldserver logging to zone processes via GM say output")
 RULE_BOOL(Logging, PlayerEventsQSProcess, false, "Have query server process player events instead of world. Useful when wanting to use a dedicated server and database for processing player events on separate disk")
+RULE_STRING(Logging, PlayerEventsIgnoreGMCommands, "help,show", "This is a comma delimited list of commands to ignore when recording GM command player events.")
 RULE_INT(Logging, BatchPlayerEventProcessIntervalSeconds, 5, "This is the interval in which player events are processed in world or qs")
 RULE_INT(Logging, BatchPlayerEventProcessChunkSize, 10000, "This is the cap of events that can be inserted into the queue before a force flush. This is to keep from hitting MySQL max_allowed_packet and killing the connection")
 RULE_CATEGORY_END()
@@ -1094,6 +1100,7 @@ RULE_CATEGORY(Instances)
 RULE_INT(Instances, ReservedInstances, 100, "Number of instance IDs which are reserved for globals. This value should not be changed while a server is running")
 RULE_BOOL(Instances, RecycleInstanceIds, true, "Setting whether free instance IDs should be recycled to prevent them from gradually running out at 32k")
 RULE_INT(Instances, GuildHallExpirationDays, 90, "Amount of days before a Guild Hall instance expires")
+RULE_INT(Instances, ExpireOffsetTimeSeconds, 3600, "Amount of seconds to beyond instance expiration time we wait to purge the entry from the database. (Default: 1 Hour)")
 RULE_CATEGORY_END()
 
 RULE_CATEGORY(Expedition)

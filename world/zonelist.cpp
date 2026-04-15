@@ -1,46 +1,47 @@
-/*	EQEMu: Everquest Server Emulator
-Copyright (C) 2001-2005 EQEMu Development Team (http://eqemulator.net)
+/*	EQEmu: EQEmulator
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; version 2 of the License.
+	Copyright (C) 2001-2026 EQEmu Development Team
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY except by those people which sell it, which
-are required to give you total support for your newly bought product;
-without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 3 of the License, or
+	(at your option) any later version.
 
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "../common/global_define.h"
 #include "zonelist.h"
-#include "zoneserver.h"
-#include "worlddb.h"
-#include "world_config.h"
-#include "../common/misc_functions.h"
-#include "../common/servertalk.h"
-#include "../common/strings.h"
-#include "../common/random.h"
-#include "../common/json/json.h"
-#include "../common/event_sub.h"
-#include "web_interface.h"
-#include "../common/zone_store.h"
-#include "../common/events/player_event_logs.h"
-#include "../common/patches/patches.h"
-#include "../common/skill_caps.h"
-#include "../common/content/world_content_service.h"
-#include "world_boot.h"
-#include "shared_task_manager.h"
-#include "dynamic_zone_manager.h"
-#include "ucs.h"
+
+#include "common/content/world_content_service.h"
+#include "common/event_sub.h"
+#include "common/events/player_event_logs.h"
+#include "common/json/json.h"
+#include "common/misc_functions.h"
+#include "common/patches/patches.h"
+#include "common/random.h"
+#include "common/repositories/buyer_repository.h"
+#include "common/repositories/trader_repository.h"
+#include "common/servertalk.h"
+#include "common/skill_caps.h"
+#include "common/strings.h"
+#include "common/zone_store.h"
+#include "world/clientlist.h"
+#include "world/dynamic_zone_manager.h"
+#include "world/queryserv.h"
+#include "world/shared_task_manager.h"
+#include "world/ucs.h"
+#include "world/web_interface.h"
+#include "world/world_boot.h"
+#include "world/world_config.h"
+#include "world/worlddb.h"
+#include "world/zoneserver.h"
 
 extern uint32 numzones;
-extern EQ::Random emu_random;
-extern WebInterfaceList web_interface;
-extern SharedTaskManager shared_task_manager;
 volatile bool UCSServerAvailable_ = false;
 void CatchSignal(int sig_num);
 
@@ -82,6 +83,8 @@ void ZSList::Remove(const std::string &uuid)
 	while (iter != zone_server_list.end()) {
 		if ((*iter)->GetUUID().compare(uuid) == 0) {
 			auto port = (*iter)->GetCPort();
+			(*iter)->CheckToClearTraderAndBuyerTables();
+
 			zone_server_list.erase(iter);
 
 			if (port != 0) {
@@ -125,6 +128,16 @@ void ZSList::Process() {
 				((shutdowntimer->GetRemainingTime() / 1000) / 60)
 			).c_str()
 		);
+	}
+
+	if (!m_queued_reloads.empty()) {
+		m_queued_reloads_mutex.lock();
+		for (auto &type : m_queued_reloads) {
+			LogInfo("Sending reload of type [{}] to zones", ServerReload::GetName(type));
+			SendServerReload(type, nullptr);
+		}
+		m_queued_reloads.clear();
+		m_queued_reloads_mutex.unlock();
 	}
 }
 
@@ -515,19 +528,27 @@ void ZSList::SendEmoteMessage(const char* to, uint32 to_guilddbid, int16 to_mins
 	SendEmoteMessageRaw(to, to_guilddbid, to_minstatus, type, buffer);
 }
 
-void ZSList::SendEmoteMessageRaw(const char* to, uint32 to_guilddbid, int16 to_minstatus, uint32 type, const char* message) {
-	if (!message)
+void ZSList::SendEmoteMessageRaw(
+	const char *to,
+	uint32 to_guilddbid,
+	int16 to_minstatus,
+	uint32 type,
+	const char *message
+)
+{
+	if (!message) {
 		return;
+	}
 	auto pack = new ServerPacket;
 
-	pack->opcode = ServerOP_EmoteMessage;
-	pack->size = sizeof(ServerEmoteMessage_Struct) + strlen(message) + 1;
+	pack->opcode  = ServerOP_EmoteMessage;
+	pack->size    = sizeof(ServerEmoteMessage_Struct) + strlen(message) + 1;
 	pack->pBuffer = new uchar[pack->size];
 	memset(pack->pBuffer, 0, pack->size);
-	ServerEmoteMessage_Struct* sem = (ServerEmoteMessage_Struct*)pack->pBuffer;
+	ServerEmoteMessage_Struct *sem = (ServerEmoteMessage_Struct *) pack->pBuffer;
 
 	if (to) {
-		strcpy((char *)sem->to, to);
+		strcpy((char *) sem->to, to);
 	}
 	else {
 		sem->to[0] = 0;
@@ -535,22 +556,37 @@ void ZSList::SendEmoteMessageRaw(const char* to, uint32 to_guilddbid, int16 to_m
 
 	sem->guilddbid = to_guilddbid;
 	sem->minstatus = to_minstatus;
-	sem->type = type;
+	sem->type      = type;
 	strcpy(&sem->message[0], message);
-	char tempto[64] = { 0 };
-	if (to)
+	char tempto[64] = {0};
+	if (to) {
 		strn0cpy(tempto, to, 64);
+	}
 
 	if (tempto[0] == 0) {
-		SendPacket(pack);
+		if (to_guilddbid > 0) {
+			SendPacketToZonesWithGuild(to_guilddbid, pack);
+		}
+		else if (to_minstatus > 0) {
+			SendPacketToZonesWithGMs(pack);
+		} else {
+			SendPacket(pack);
+		}
 	}
 	else {
-		ZoneServer* zs = FindByName(to);
-
-		if (zs != 0)
+		ZoneServer *zs = FindByName(to);
+		if (zs) {
 			zs->SendPacket(pack);
-		else
+		}
+		else if (to_guilddbid > 0) {
+			SendPacketToZonesWithGuild(to_guilddbid, pack);
+		}
+		else if (to_minstatus > 0) {
+			SendPacketToZonesWithGMs(pack);
+		}
+		else {
 			SendPacket(pack);
+		}
 	}
 	delete pack;
 }
@@ -655,7 +691,7 @@ void ZSList::RebootZone(const char* ip1, uint16 port, const char* ip2, uint32 sk
 		safe_delete_array(tmp);
 		return;
 	}
-	uint32 z = emu_random.Int(0, y - 1);
+	uint32 z = EQ::Random::Instance()->Int(0, y - 1);
 
 	auto pack = new ServerPacket(ServerOP_ZoneReboot, sizeof(ServerZoneReboot_Struct));
 	ServerZoneReboot_Struct* s = (ServerZoneReboot_Struct*)pack->pBuffer;
@@ -851,7 +887,7 @@ void ZSList::OnTick(EQ::Timer *t)
 		out["data"].append(outzone);
 	}
 
-	web_interface.SendEvent(out);
+	WebInterfaceList::Instance()->SendEvent(out);
 }
 
 const std::list<std::unique_ptr<ZoneServer>> &ZSList::getZoneServerList() const
@@ -865,6 +901,34 @@ bool ZSList::SendPacketToBootedZones(ServerPacket* pack)
 		auto r = z.get();
 		if (r && r->GetZoneID() > 0) {
 			r->SendPacket(pack);
+		}
+	}
+
+	return true;
+}
+
+bool ZSList::SendPacketToZonesWithGuild(uint32 guild_id, ServerPacket* pack)
+{
+	auto servers = ClientList::Instance()->GetGuildZoneServers(guild_id);
+	for (auto const& z : zone_server_list) {
+		for (auto const& server_id : servers) {
+			if (z->GetID() == server_id && z->GetZoneID() > 0) {
+				z->SendPacket(pack);
+			}
+		}
+	}
+
+	return true;
+}
+
+bool ZSList::SendPacketToZonesWithGMs(ServerPacket* pack)
+{
+	auto servers = ClientList::Instance()->GetZoneServersWithGMs();
+	for (auto const &z: zone_server_list) {
+		for (auto const &server_id: servers) {
+			if (z->GetID() == server_id && z->GetZoneID() > 0) {
+				z->SendPacket(pack);
+			}
 		}
 	}
 
@@ -894,6 +958,8 @@ void ZSList::SendServerReload(ServerReload::Type type, uchar *packet)
 		ServerReload::Type::Commands,
 		ServerReload::Type::PerlExportSettings,
 		ServerReload::Type::DataBucketsCache,
+		ServerReload::Type::Quests,
+		ServerReload::Type::QuestsTimerReset,
 		ServerReload::Type::WorldRepop,
 		ServerReload::Type::WorldWithRespawn
 	};
@@ -909,15 +975,16 @@ void ZSList::SendServerReload(ServerReload::Type type, uchar *packet)
 	} else if (type == ServerReload::Type::Rules) {
 		RuleManager::Instance()->LoadRules(&database, RuleManager::Instance()->GetActiveRuleset(), true);
 	} else if (type == ServerReload::Type::SkillCaps) {
-		skill_caps.ReloadSkillCaps();
+		SkillCaps::Instance()->ReloadSkillCaps();
 	} else if (type == ServerReload::Type::ContentFlags) {
-		content_service.SetExpansionContext()->ReloadContentFlags();
+		WorldContentService::Instance()->SetExpansionContext()->ReloadContentFlags();
 	} else if (type == ServerReload::Type::Logs) {
-		LogSys.LoadLogDatabaseSettings();
-		player_event_logs.ReloadSettings();
-		UCSLink.SendPacket(&pack);
+		EQEmuLogSys::Instance()->LoadLogDatabaseSettings();
+		PlayerEventLogs::Instance()->ReloadSettings();
+		UCSConnection::Instance()->SendPacket(&pack);
+		QueryServConnection::Instance()->SendPacket(&pack);
 	} else if (type == ServerReload::Type::Tasks) {
-		shared_task_manager.LoadTaskData();
+		SharedTaskManager::Instance()->LoadTaskData();
 	} else if (type == ServerReload::Type::DzTemplates) {
 		dynamic_zone_manager.LoadTemplates();
 	}
@@ -943,4 +1010,11 @@ void ZSList::SendServerReload(ServerReload::Type type, uchar *packet)
 		z->SendPacket(&pack);
 		++counter;
 	}
+}
+
+void ZSList::QueueServerReload(ServerReload::Type &type)
+{
+	m_queued_reloads_mutex.lock();
+	m_queued_reloads.emplace_back(type);
+	m_queued_reloads_mutex.unlock();
 }

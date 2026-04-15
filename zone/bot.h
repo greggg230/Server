@@ -1,46 +1,38 @@
-/*	EQEMu: Everquest Server Emulator
-	Copyright (C) 2001-2016 EQEMu Development Team (http://eqemulator.org)
+/*	EQEmu: EQEmulator
+
+	Copyright (C) 2001-2026 EQEmu Development Team
 
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation; version 2 of the License.
+	the Free Software Foundation; either version 3 of the License, or
+	(at your option) any later version.
 
 	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY except by those people which sell it, which
-	are required to give you total support for your newly bought product;
-	without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with this program; if not, write to the Free Software
-	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+	along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
+#pragma once
 
-#ifndef BOT_H
-#define BOT_H
-
-#include "bot_structs.h"
-#include "mob.h"
-#include "client.h"
-#include "pets.h"
-#include "heal_rotation.h"
-#include "groups.h"
-#include "corpse.h"
-#include "zonedb.h"
-#include "../common/zone_store.h"
-#include "string_ids.h"
-#include "../common/misc_functions.h"
-#include "../common/global_define.h"
-#include "guild_mgr.h"
-#include "worldserver.h"
-#include "raids.h"
-
-#include <sstream>
+#include "common/misc_functions.h"
+#include "common/zone_store.h"
+#include "zone/bot_structs.h"
+#include "zone/client.h"
+#include "zone/corpse.h"
+#include "zone/groups.h"
+#include "zone/guild_mgr.h"
+#include "zone/heal_rotation.h"
+#include "zone/mob.h"
+#include "zone/pets.h"
+#include "zone/raids.h"
+#include "zone/string_ids.h"
+#include "zone/worldserver.h"
+#include "zone/zonedb.h"
 
 constexpr uint32 BOT_KEEP_ALIVE_INTERVAL = 5000; // 5 seconds
-
-constexpr uint32 BOT_COMBAT_JITTER_INTERVAL_MIN = 1500; // 1.5 seconds
-constexpr uint32 BOT_COMBAT_JITTER_INTERVAL_MAX = 3000; // 3 seconds
 
 constexpr uint32 MAG_EPIC_1_0 = 28034;
 
@@ -166,7 +158,6 @@ namespace BotPriorityCategories {
 };
 
 namespace BotBaseSettings {
-	constexpr uint16 ExpansionBitmask                 = 0;
 	constexpr uint16 ShowHelm                         = 1;
 	constexpr uint16 FollowDistance                   = 2;
 	constexpr uint16 StopMeleeLevel                   = 3;	
@@ -181,13 +172,11 @@ namespace BotBaseSettings {
 	constexpr uint16 SitHPPct                         = 12;
 	constexpr uint16 SitManaPct                       = 13;
 
-	constexpr uint16 START_ALL                        = ExpansionBitmask;
-	constexpr uint16 START                            = BotBaseSettings::ShowHelm; // Everything above this cannot be copied, changed or viewed by players
+	constexpr uint16 START                            = BotBaseSettings::ShowHelm;
 	constexpr uint16 END                              = BotBaseSettings::SitManaPct; // Increment as needed
 };
 
 static std::map<uint16, std::string> botBaseSettings_names = {
-	{ BotBaseSettings::ExpansionBitmask,             "ExpansionBitmask" },
 	{ BotBaseSettings::ShowHelm,                     "ShowHelm" },
 	{ BotBaseSettings::FollowDistance,               "FollowDistance" },
 	{ BotBaseSettings::StopMeleeLevel,               "StopMeleeLevel" },
@@ -232,19 +221,10 @@ static std::map<uint16, std::string> botSubType_names = {
 	{ CommandedSubTypes::Selo,                      "Selo" }
 };
 
-struct CombatRangeInput {
-	Mob*                    target;
-	float                   target_distance;
-	uint8                   stop_melee_level;
-	const EQ::ItemInstance* p_item;
-	const EQ::ItemInstance* s_item;
-};
-
-struct CombatRangeOutput {
-	bool  at_combat_range		= false;
-	float melee_distance_min	= 0.0f;
-	float melee_distance		= 0.0f;
-	float melee_distance_max	= 0.0f;
+namespace BotAnimEmpathy {
+	constexpr uint8 Guard       		= 1;
+	constexpr uint8 Attack           	= 2;
+	constexpr uint8 BackOff             = 3;
 };
 
 class Bot : public NPC {
@@ -577,7 +557,7 @@ public:
 	uint16 GetPetBotSpellType(uint16 spell_type);
 
 	// Movement checks
-	bool PlotBotPositionAroundTarget(Mob* target, float& x_dest, float& y_dest, float& z_dest, float min_distance, float max_distance, bool behind_only = false, bool front_only = false, bool bypass_los = false);
+	bool PlotBotPositionAroundTarget(const FindPositionInput& input);
 	std::vector<Mob*> GetSpellTargetList(bool entire_raid = false);
 	void SetSpellTargetList(std::vector<Mob*> spell_target_list) { _spell_target_list = spell_target_list; }
 	std::vector<Mob*> GetGroupSpellTargetList() { return _group_spell_target_list; }
@@ -765,7 +745,7 @@ public:
 	static BotSpell GetBestBotSpellForGroupCompleteHeal(Bot* caster, Mob* tar, uint16 spell_type = BotSpellTypes::RegularHeal);
 	static BotSpell GetBestBotSpellForGroupHeal(Bot* caster, Mob* tar, uint16 spell_type = BotSpellTypes::RegularHeal);
 
-	static Mob* GetFirstIncomingMobToMez(Bot* caster, int16 spell_id, uint16 spell_type, bool AE);
+	static Mob* GetFirstIncomingMobToMez(Bot* caster, uint16 spell_id, uint16 spell_type, bool AE);
 	static BotSpell GetBestBotSpellForMez(Bot* caster, uint16 spell_type = BotSpellTypes::Mez);
 	static BotSpell GetBestBotMagicianPetSpell(Bot* caster, uint16 spell_type = BotSpellTypes::Pet);
 	static std::string GetBotMagicianPetType(Bot* caster);
@@ -804,6 +784,7 @@ public:
 	EQ::ItemInstance* GetBotItem(uint16 slot_id);
 	bool GetSpawnStatus() { return _spawnStatus; }
 	uint8 GetPetChooserID() { return _petChooserID; }
+	bool HasControllablePet(uint8 ranks_required = 0);
 	bool IsBotRanged() { return _botRangedSetting; }
 	bool IsBotCharmer() { return _botCharmer; }
 	bool IsBot() const override { return true; }
@@ -1102,15 +1083,8 @@ public:
 	bool CheckIfCasting(float fm_distance);
 	void HealRotationChecks();
 
-	bool GetCombatJitterFlag() { return m_combat_jitter_flag; }
-	void SetCombatJitterFlag(bool flag = true) { m_combat_jitter_flag = flag; }
-	bool GetCombatOutOfRangeJitterFlag() { return m_combat_out_of_range_jitter_flag; }
-	void SetCombatOutOfRangeJitterFlag(bool flag = true) { m_combat_out_of_range_jitter_flag = flag; }
 	void SetCombatJitter();
-	void SetCombatOutOfRangeJitter();
-	void DoCombatPositioning(Mob* tar, glm::vec3 Goal, bool stop_melee_level, float tar_distance, float melee_distance_min, float melee_distance, float melee_distance_max, bool behind_mob, bool front_mob);
-	void DoFaceCheckWithJitter(Mob* tar);
-	void DoFaceCheckNoJitter(Mob* tar);
+	bool DoCombatPositioning(const CombatPositioningInput& input);
 	void RunToGoalWithJitter(glm::vec3 Goal);
 	bool RequiresLoSForPositioning();
 	bool HasRequiredLoSForPositioning(Mob* tar);
@@ -1118,18 +1092,21 @@ public:
 	// Try Combat Methods
 	bool TryEvade(Mob* tar);
 	bool TryFacingTarget(Mob* tar);
-	bool TryPursueTarget(float leash_distance, glm::vec3& Goal);
+	bool TryPursueTarget(float leash_distance);
 	bool TryMeditate();
 	bool TryAutoDefend(Client* bot_owner, float leash_distance);
 	bool TryIdleChecks(float fm_distance);
-	bool TryNonCombatMovementChecks(Client* bot_owner, const Mob* follow_mob, glm::vec3& Goal);
-	void DoOutOfCombatChecks(Client* bot_owner, Mob* follow_mob, glm::vec3& Goal, float leash_distance, float fm_distance);
+	bool TryNonCombatMovementChecks(Client* bot_owner, const Mob* follow_mob);
+	void DoOutOfCombatChecks(Client* bot_owner, Mob* follow_mob, float leash_distance, float fm_distance);
 	bool TryBardMovementCasts();
 	bool BotRangedAttack(Mob* other, bool can_double_attack = false);
 	bool CheckDoubleRangedAttack();
 
 	// Public "Refactor" Methods
 	static bool CheckCampSpawnConditions(Client* c);
+	static bool CheckHighEnoughLevelForBots(Client* c, uint8 bot_class = Class::None);
+	static bool CheckCreateLimit(Client* c, uint32 bot_count, uint8 bot_class = Class::None);
+	static bool CheckSpawnLimit(Client* c, uint8 bot_class = Class::None);
 
 protected:
 	void BotMeditate(bool is_sitting);
@@ -1189,8 +1166,6 @@ private:
 	Timer m_auto_save_timer;
 
 	Timer m_combat_jitter_timer;
-	bool m_combat_jitter_flag;
-	bool m_combat_out_of_range_jitter_flag;
 
 	bool m_dirtyautohaters;
 	bool m_guard_flag;
@@ -1283,5 +1258,3 @@ private:
 };
 
 bool IsSpellInBotList(DBbotspells_Struct* spell_list, uint16 spell_id);
-
-#endif // BOT_H

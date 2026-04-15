@@ -1,45 +1,38 @@
-/*	EQEMu: Everquest Server Emulator
-	Copyright (C) 2001-2002 EQEMu Development Team (http://eqemu.org)
+/*	EQEmu: EQEmulator
+
+	Copyright (C) 2001-2026 EQEmu Development Team
 
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation; version 2 of the License.
+	the Free Software Foundation; either version 3 of the License, or
+	(at your option) any later version.
 
 	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY except by those people which sell it, which
-	are required to give you total support for your newly bought product;
-	without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with this program; if not, write to the Free Software
-	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+	along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef NPC_H
-#define NPC_H
+#pragma once
 
-#include "../common/rulesys.h"
-
-#include "mob.h"
-#include "qglobals.h"
-#include "zonedb.h"
-#include "../common/zone_store.h"
-#include "zonedump.h"
-#include "../common/repositories/npc_faction_entries_repository.h"
-#include "../common/repositories/loottable_repository.h"
-#include "../common/repositories/loottable_entries_repository.h"
-#include "../common/repositories/lootdrop_repository.h"
-#include "../common/repositories/lootdrop_entries_repository.h"
+#include "common/repositories/lootdrop_entries_repository.h"
+#include "common/repositories/lootdrop_repository.h"
+#include "common/repositories/loottable_entries_repository.h"
+#include "common/repositories/loottable_repository.h"
+#include "common/repositories/npc_faction_entries_repository.h"
+#include "common/rulesys.h"
+#include "common/zone_store.h"
+#include "zone/mob.h"
+#include "zone/qglobals.h"
+#include "zone/zonedb.h"
+#include "zone/zonedump.h"
 
 #include <deque>
 #include <list>
 
-
-#ifdef _WINDOWS
-	#define M_PI	3.141592
-#endif
-
-typedef struct {
+struct NPCProximity {
 	float	min_x;
 	float	max_x;
 	float	min_y;
@@ -48,7 +41,7 @@ typedef struct {
 	float	max_z;
 	bool	say;
 	bool	proximity_set;
-} NPCProximity;
+};
 
 struct AISpells_Struct {
 	uint32	type;			// 0 = never, must be one (and only one) of the defined values
@@ -346,7 +339,7 @@ public:
 	int64 GetNPCHPRegen() const { return hp_regen + itembonuses.HPRegen + spellbonuses.HPRegen; }
 	inline const char* GetAmmoIDfile() const { return ammo_idfile; }
 
-	void ModifyStatsOnCharm(bool is_charm_removed);
+	void ModifyStatsOnCharm(bool remove_charm, Mob* charmer);
 
 	//waypoint crap
 	int					GetMaxWp() const { return max_wp; }
@@ -552,6 +545,9 @@ public:
 
 	void ScaleNPC(uint8 npc_level, bool always_scale = false, bool override_special_abilities = false);
 
+	uint32 GetNPCTintIndex() { return m_npc_tint_id; }
+	void SetNPCTintIndex(uint32 index);
+
 	void RecalculateSkills();
 	void ReloadSpells();
 
@@ -603,10 +599,9 @@ public:
 
 	// zone state save
 	inline void SetQueuedToCorpse() { m_queued_for_corpse = true; }
-	inline bool IsQueuedForCorpse() { return m_queued_for_corpse; }
-	inline uint32_t SetCorpseDecayTime(uint32_t decay_time) { return m_corpse_decay_time = decay_time; }
+	inline bool IsQueuedForCorpse() const { return m_queued_for_corpse; }
 	inline void SetResumedFromZoneSuspend(bool state = true) { m_resumed_from_zone_suspend = state; }
-	inline bool IsResumedFromZoneSuspend() { return m_resumed_from_zone_suspend; }
+	inline bool IsResumedFromZoneSuspend() const { return m_resumed_from_zone_suspend; }
 
 	inline void LoadBuffsFromState(std::vector<Buffs_Struct> in_buffs) {
 		int i = 0;
@@ -658,15 +653,12 @@ protected:
 	LootItems m_loot_items;
 
 	// zone state
-	bool     m_resumed_from_zone_suspend  = false;
-	bool     m_queued_for_corpse          = false; // this is to check for corpse creation on zone state restore
-	uint32_t m_corpse_decay_time          = 0; // decay time set on zone state restore
-	Timer    m_corpse_queue_timer         = {}; // this is to check for corpse creation on zone state restore
-	Timer    m_corpse_queue_shutoff_timer = {};
+	bool m_resumed_from_zone_suspend = false;
+	bool m_queued_for_corpse         = false; // this is to check for corpse creation on zone state restore
 
-	// this is a 30-second timer that protects a NPC from having double assignment of loot
+	// this is a timer that protects a NPC from having double assignment of loot
 	// this is to prevent a player from killing a NPC and then zoning out and back in to get loot again
-	// if loot was to be assigned via script again, this protects double assignment for 30 seconds
+	// if loot was to be assigned via script again, this protects double assignment for a short time
 	Timer m_resumed_from_zone_suspend_shutoff_timer = {};
 
 	std::list<NpcFactionEntriesRepository::NpcFactionEntries> faction_list;
@@ -809,6 +801,3 @@ private:
 	bool                m_record_loot_stats;
 	std::vector<uint32> m_rolled_items = {};
 };
-
-#endif
-

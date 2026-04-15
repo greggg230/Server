@@ -1,21 +1,38 @@
-#ifndef COMMAND_H
-#define COMMAND_H
+/*	EQEmu: EQEmulator
+
+	Copyright (C) 2001-2026 EQEmu Development Team
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+#pragma once
+
+#include "common/types.h"
+
+#include <string>
 
 class Client;
 class Seperator;
-
-#include "../common/types.h"
-#include <string>
 
 #define    COMMAND_CHAR '#'
 
 typedef void (*CmdFuncPtr)(Client *, const Seperator *);
 
-typedef struct {
+struct CommandRecord {
 	uint8 admin;
 	std::string description;
 	CmdFuncPtr function; // null means perl function
-} CommandRecord;
+};
 
 extern int (*command_dispatch)(Client *, std::string, bool);
 extern int command_count; // Commands Loaded Count
@@ -111,7 +128,6 @@ void command_ipban(Client *c, const Seperator *sep);
 void command_kick(Client *c, const Seperator *sep);
 void command_killallnpcs(Client *c, const Seperator *sep);
 void command_kill(Client *c, const Seperator *sep);
-void command_level(Client *c, const Seperator *sep);
 void command_list(Client *c, const Seperator *sep);
 void command_lootsim(Client *c, const Seperator *sep);
 void command_load_shared_memory(Client *c, const Seperator *sep);
@@ -139,7 +155,6 @@ void command_nudge(Client *c, const Seperator *sep);
 void command_nukebuffs(Client *c, const Seperator *sep);
 void command_nukeitem(Client *c, const Seperator *sep);
 void command_object(Client *c, const Seperator *sep);
-void command_oocmute(Client *c, const Seperator *sep);
 void command_parcels(Client *c, const Seperator *sep);
 void command_path(Client *c, const Seperator *sep);
 void command_peqzone(Client *c, const Seperator *sep);
@@ -147,7 +162,6 @@ void command_petitems(Client *c, const Seperator *sep);
 void command_picklock(Client *c, const Seperator *sep);
 void command_profanity(Client *c, const Seperator *sep);
 void command_push(Client *c, const Seperator *sep);
-void command_pvp(Client *c, const Seperator *sep);
 void command_raidloot(Client* c, const Seperator* sep);
 void command_randomfeatures(Client *c, const Seperator *sep);
 void command_refreshgroup(Client *c, const Seperator *sep);
@@ -201,11 +215,6 @@ void command_zone_instance(Client *c, const Seperator *sep);
 void command_zone_shard(Client *c, const Seperator *sep);
 void command_zonebootup(Client *c, const Seperator *sep);
 void command_zoneshutdown(Client *c, const Seperator *sep);
-void command_zopp(Client *c, const Seperator *sep);
-void command_zsafecoords(Client *c, const Seperator *sep);
+void command_zonevariable(Client *c, const Seperator *sep);
 void command_zsave(Client *c, const Seperator *sep);
-
-#include "bot.h"
 void command_bot(Client*c, const Seperator *sep);
-
-#endif

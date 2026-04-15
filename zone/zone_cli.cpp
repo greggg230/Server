@@ -1,6 +1,25 @@
+/*	EQEmu: EQEmulator
+
+	Copyright (C) 2001-2026 EQEmu Development Team
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "zone_cli.h"
-#include "../common/cli/eqemu_command_handler.h"
-#include <string.h>
+
+#include "common/cli/eqemu_command_handler.h"
+
+#include <cstring>
 
 bool ZoneCLI::RanConsoleCommand(int argc, char **argv)
 {
@@ -29,17 +48,13 @@ void ZoneCLI::CommandHandler(int argc, char **argv)
 	auto function_map = EQEmuCommand::function_map;
 
 	// Register commands
-	function_map["benchmark:databuckets"] = &ZoneCLI::BenchmarkDatabuckets;
-	function_map["sidecar:serve-http"] = &ZoneCLI::SidecarServeHttp;
-	function_map["tests:databuckets"] = &ZoneCLI::DataBuckets;
-	function_map["tests:npc-handins"] = &ZoneCLI::NpcHandins;
-	function_map["tests:npc-handins-multiquest"] = &ZoneCLI::NpcHandinsMultiQuest;
+	function_map["benchmark:databuckets"]        = &ZoneCLI::BenchmarkDatabuckets;
+	function_map["sidecar:serve-http"]           = &ZoneCLI::SidecarServeHttp;
+	function_map["tests:databuckets"]            = &ZoneCLI::TestDataBuckets;
+	function_map["tests:npc-handins"]            = &ZoneCLI::TestNpcHandins;
+	function_map["tests:npc-handins-multiquest"] = &ZoneCLI::TestNpcHandinsMultiQuest;
+	function_map["tests:zone-state"]             = &ZoneCLI::TestZoneState;
 
 	EQEmuCommand::HandleMenu(function_map, cmd, argc, argv);
 }
 
-#include "cli/databuckets.cpp"
-#include "cli/benchmark_databuckets.cpp"
-#include "cli/sidecar_serve_http.cpp"
-#include "cli/npc_handins.cpp"
-#include "cli/npc_handins_multiquest.cpp"

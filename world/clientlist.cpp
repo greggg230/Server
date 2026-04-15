@@ -1,52 +1,53 @@
-/*	EQEMu: Everquest Server Emulator
-	Copyright (C) 2001-2016 EQEMu Development Team (http://eqemulator.net)
+/*	EQEmu: EQEmulator
+
+	Copyright (C) 2001-2026 EQEmu Development Team
 
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation; version 2 of the License.
+	the Free Software Foundation; either version 3 of the License, or
+	(at your option) any later version.
 
 	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY except by those people which sell it, which
-	are required to give you total support for your newly bought product;
-	without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with this program; if not, write to the Free Software
-	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+	along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
+#include "common/classes.h"
+#include "common/event_sub.h"
+#include "common/guilds.h"
+#include "common/json/json.h"
+#include "common/misc_functions.h"
+#include "common/misc.h"
+#include "common/packet_dump.h"
+#include "common/races.h"
+#include "common/strings.h"
+#include "common/zone_store.h"
+#include "world/client.h"
+#include "world/clientlist.h"
+#include "world/web_interface.h"
+#include "world/wguild_mgr.h"
+#include "world/worlddb.h"
+#include "world/zonelist.h"
+#include "world/zoneserver.h"
 
-#include "../common/global_define.h"
-#include "clientlist.h"
-#include "zoneserver.h"
-#include "zonelist.h"
-#include "client.h"
-#include "worlddb.h"
-#include "../common/strings.h"
-#include "../common/guilds.h"
-#include "../common/races.h"
-#include "../common/classes.h"
-#include "../common/packet_dump.h"
-#include "../common/misc.h"
-#include "../common/misc_functions.h"
-#include "../common/json/json.h"
-#include "../common/event_sub.h"
-#include "web_interface.h"
-#include "wguild_mgr.h"
-#include "../common/zone_store.h"
 #include <set>
 
-extern WebInterfaceList web_interface;
-
-extern ZSList			zoneserver_list;
 uint32 numplayers = 0;	//this really wants to be a member variable of ClientList...
 
 ClientList::ClientList()
-: CLStale_timer(10000)
+	: CLStale_timer(10000),
+	  m_poll_cache_timer(6000)
 {
 	NextCLEID = 1;
 
 	m_tick = std::make_unique<EQ::Timer>(5000, true, std::bind(&ClientList::OnTick, this, std::placeholders::_1));
+
+	// pre-allocate / pin memory for the zone server caches
+	m_gm_zone_server_ids.reserve(512);
+	m_guild_zone_server_ids.reserve(1024);
 }
 
 ClientList::~ClientList() {
@@ -56,6 +57,10 @@ void ClientList::Process() {
 
 	if (CLStale_timer.Check())
 		CLCheckStale();
+
+	if (m_poll_cache_timer.Check()) {
+		RebuildZoneServerCaches();
+	}
 
 	LinkedListIterator<Client*> iterator(list);
 
@@ -225,7 +230,7 @@ void ClientList::DisconnectByIP(uint32 in_ip) {
 				strn0cpy(skp->adminname, "SessionLimit", sizeof(skp->adminname));
 				strn0cpy(skp->name, cle->name(), sizeof(skp->name));
 				skp->adminrank = 255;
-				zoneserver_list.SendPacket(pack);
+				ZSList::Instance()->SendPacket(pack);
 				safe_delete(pack);
 			}
 			cle->SetOnline(CLE_Status::Offline);
@@ -275,61 +280,106 @@ ClientListEntry* ClientList::FindCLEByCharacterID(uint32 iCharID) {
 	return nullptr;
 }
 
-void ClientList::SendCLEList(const int16& admin, const char* to, WorldTCPConnection* connection, const char* iName) {
+void ClientList::SendCLEList(const int16& admin, const char* to, WorldTCPConnection* connection, const char* search_criteria)
+{
 	LinkedListIterator<ClientListEntry*> iterator(clientlist);
-	int x = 0, y = 0;
-	int namestrlen = iName == 0 ? 0 : strlen(iName);
-	bool addnewline = false;
-	char newline[3];
-	if (connection->IsConsole())
-		strcpy(newline, "\r\n");
-	else
-		strcpy(newline, "^");
 
-	auto out = fmt::memory_buffer();
+	int found_count = 0;
+	int total_count = 0;
+	int name_length = search_criteria ? strlen(search_criteria) : 0;
+
+	const char* new_line = connection->IsConsole() ? "\r\n" : "^";
+	bool add_new_line = false;
+
+	std::string message;
+
 	iterator.Reset();
-	while(iterator.MoreElements()) {
+
+	while (iterator.MoreElements()) {
 		ClientListEntry* cle = iterator.GetData();
-		if (admin >= cle->Admin() && (iName == 0 || namestrlen == 0 || strncasecmp(cle->name(), iName, namestrlen) == 0 || strncasecmp(cle->AccountName(), iName, namestrlen) == 0 || strncasecmp(cle->LSName(), iName, namestrlen) == 0)) {
-			struct in_addr in;
-			in.s_addr = cle->GetIP();
-			if (addnewline) {
-				fmt::format_to(std::back_inserter(out), fmt::runtime(newline));
+
+		struct in_addr in;
+		in.s_addr = cle->GetIP();
+
+		if (
+			admin >= cle->Admin() &&
+			(
+				!search_criteria ||
+				Strings::Contains(std::string(inet_ntoa(in)), search_criteria) ||
+				Strings::Contains(cle->name(), search_criteria) == 0 ||
+				Strings::Contains(cle->AccountName(), search_criteria) == 0 ||
+				Strings::Contains(cle->LSName(), search_criteria) == 0
+			)
+		) {
+			if (add_new_line) {
+				message += new_line;
 			}
-			fmt::format_to(std::back_inserter(out), "ID: {}  Acc# {}  AccName: {}  IP: {}", cle->GetID(), cle->AccountID(), cle->AccountName(), inet_ntoa(in));
-			fmt::format_to(std::back_inserter(out), "{}  Stale: {}  Online: {}  Admin: {}", newline, cle->GetStaleCounter(), static_cast<int>(cle->Online()), cle->Admin());
-			if (cle->LSID())
-				fmt::format_to(std::back_inserter(out), "{}  LSID: {}  LSName: {}  WorldAdmin: {}", newline, cle->LSID(), cle->LSName(), cle->WorldAdmin());
-			if (cle->CharID())
-				fmt::format_to(std::back_inserter(out), "{}  CharID: {}  CharName: {}  Zone: {} ({})", newline, cle->CharID(), cle->name(), ZoneName(cle->zone()), cle->zone());
-			if (out.size() >= 3072) {
+
+			message += fmt::format(
+				"Account: {} ({}) | IP: {} | Admin: {}",
+				cle->AccountName(),
+				cle->AccountID(),
+				inet_ntoa(in),
+				cle->Admin()
+			);
+
+			if (cle->CharID()) {
+				message += fmt::format(
+					"{}Character: {} ({}) | Zone: {} ({})",
+					new_line,
+					cle->name(),
+					cle->CharID(),
+					ZoneLongName(cle->zone()),
+					cle->zone()
+				);
+			}
+
+			if (message.size() >= 3072) {
 				connection->SendEmoteMessageRaw(
 					to,
 					0,
 					AccountStatus::Player,
 					Chat::NPCQuestSay,
-					out.data()
+					message.c_str()
 				);
-				addnewline = false;
-				out.clear();
+				message.clear();
+				add_new_line = false;
 			} else {
-				addnewline = true;
+				add_new_line = true;
 			}
-			y++;
+
+			found_count++;
 		}
+
 		iterator.Advance();
-		x++;
+		total_count++;
 	}
-	fmt::format_to(std::back_inserter(out), "{}{} CLEs in memory. {} CLEs listed. numplayers = {}.", newline, x, y, numplayers);
+
+	message += fmt::format(
+		"{}{}Player Count: {}",
+		new_line,
+		(
+			found_count != total_count ?
+			fmt::format(
+				"Total: {} CLE{} | Found: {} CLE{} | ",
+				total_count,
+				(total_count != 1 ? "s" : ""),
+				found_count,
+				(found_count != 1 ? "s" : "")
+			) :
+			""
+		),
+		numplayers
+	);
+
 	connection->SendEmoteMessageRaw(
 		to,
 		0,
 		AccountStatus::Player,
 		Chat::NPCQuestSay,
-		out.data()
+		message.c_str()
 	);
 }
-
 
 void ClientList::CLEAdd(
 	uint32 login_server_id,
@@ -384,6 +434,7 @@ void ClientList::ClientUpdate(ZoneServer *zoneserver, ServerClientList_Struct *s
 			}
 			else {
 				cle->Update(zoneserver, scl);
+				AddToZoneServerCaches(cle);
 			}
 			return;
 		}
@@ -458,6 +509,7 @@ void ClientList::ClientUpdate(ZoneServer *zoneserver, ServerClientList_Struct *s
 	);
 
 	clientlist.Insert(cle);
+	AddToZoneServerCaches(cle);
 	zoneserver->ChangeWID(scl->charid, cle->GetID());
 }
 
@@ -542,7 +594,7 @@ void ClientList::SendOnlineGuildMembers(uint32 FromID, uint32 GuildID)
 
 		Iterator.Advance();
 	}
-	zoneserver_list.SendPacket(from->zone(), from->instance(), pack);
+	ZSList::Instance()->SendPacket(from->zone(), from->instance(), pack);
 	safe_delete(pack);
 }
 
@@ -590,7 +642,7 @@ void ClientList::SendWhoAll(uint32 fromid,const char* to, int16 admin, Who_All_S
 			whomlen = strlen(whom->whom);
 
 			if (whom->wrace == 0x001A) { // 0x001A is the old Froglok race number and is sent by the client for /who all froglok
-				whom->wrace = FROGLOK; // This is what EQEmu uses for the Froglok Race number.
+				whom->wrace = Race::Froglok2; // This is what EQEmu uses for the Froglok Race number.
 			}
 		}
 
@@ -1307,7 +1359,7 @@ void ClientList::RemoveCLEReferances(ClientListEntry* cle) {
 
 bool ClientList::SendPacket(const char* to, ServerPacket* pack) {
 	if (to == 0 || to[0] == 0) {
-		zoneserver_list.SendPacket(pack);
+		ZSList::Instance()->SendPacket(pack);
 		return true;
 	}
 	else if (to[0] == '*') {
@@ -1323,7 +1375,7 @@ bool ClientList::SendPacket(const char* to, ServerPacket* pack) {
 			}
 			return false;
 		} else {
-			ZoneServer* zs = zoneserver_list.FindByName(to);
+			ZoneServer* zs = ZSList::Instance()->FindByName(to);
 			if (zs != nullptr) {
 				zs->SendPacket(pack);
 				return true;
@@ -1428,7 +1480,7 @@ void ClientList::SendClientVersionSummary(const char *Name)
 	);
 
 	if (client_count[EQ::versions::ClientVersion::Titanium]) {
-		zoneserver_list.SendEmoteMessage(
+		ZSList::Instance()->SendEmoteMessage(
 			Name,
 			0,
 			AccountStatus::Player,
@@ -1441,7 +1493,7 @@ void ClientList::SendClientVersionSummary(const char *Name)
 	}
 
 	if (client_count[EQ::versions::ClientVersion::SoF]) {
-		zoneserver_list.SendEmoteMessage(
+		ZSList::Instance()->SendEmoteMessage(
 			Name,
 			0,
 			AccountStatus::Player,
@@ -1454,7 +1506,7 @@ void ClientList::SendClientVersionSummary(const char *Name)
 	}
 
 	if (client_count[EQ::versions::ClientVersion::SoD]) {
-		zoneserver_list.SendEmoteMessage(
+		ZSList::Instance()->SendEmoteMessage(
 			Name,
 			0,
 			AccountStatus::Player,
@@ -1467,7 +1519,7 @@ void ClientList::SendClientVersionSummary(const char *Name)
 	}
 
 	if (client_count[EQ::versions::ClientVersion::UF]) {
-		zoneserver_list.SendEmoteMessage(
+		ZSList::Instance()->SendEmoteMessage(
 			Name,
 			0,
 			AccountStatus::Player,
@@ -1480,7 +1532,7 @@ void ClientList::SendClientVersionSummary(const char *Name)
 	}
 
 	if (client_count[EQ::versions::ClientVersion::RoF]) {
-		zoneserver_list.SendEmoteMessage(
+		ZSList::Instance()->SendEmoteMessage(
 			Name,
 			0,
 			AccountStatus::Player,
@@ -1493,7 +1545,7 @@ void ClientList::SendClientVersionSummary(const char *Name)
 	}
 
 	if (client_count[EQ::versions::ClientVersion::RoF2]) {
-		zoneserver_list.SendEmoteMessage(
+		ZSList::Instance()->SendEmoteMessage(
 			Name,
 			0,
 			AccountStatus::Player,
@@ -1506,7 +1558,7 @@ void ClientList::SendClientVersionSummary(const char *Name)
 	}
 
 
-	zoneserver_list.SendEmoteMessage(
+	ZSList::Instance()->SendEmoteMessage(
 		Name,
 		0,
 		AccountStatus::Player,
@@ -1602,13 +1654,13 @@ void ClientList::OnTick(EQ::Timer *t)
 		Iterator.Advance();
 	}
 
-	web_interface.SendEvent(out);
+	WebInterfaceList::Instance()->SendEvent(out);
 }
 
 /**
  * @param response
  */
-void ClientList::GetClientList(Json::Value &response)
+void ClientList::GetClientList(Json::Value &response, bool full_list)
 {
 	LinkedListIterator<ClientListEntry *> Iterator(clientlist);
 
@@ -1619,62 +1671,68 @@ void ClientList::GetClientList(Json::Value &response)
 
 		Json::Value row;
 
-		row["account_id"]             = cle->AccountID();
-		row["account_name"]           = cle->AccountName();
-		row["admin"]                  = cle->Admin();
-		row["id"]                     = cle->GetID();
-		row["ip"]                     = cle->GetIP();
-		row["loginserver_account_id"] = cle->LSAccountID();
-		row["loginserver_id"]         = cle->LSID();
-		row["loginserver_name"]       = cle->LSName();
-		row["online"]                 = cle->Online();
-		row["world_admin"]            = cle->WorldAdmin();
+		row["id"]             = cle->GetID();
+		row["name"]           = cle->name();
+		row["level"]          = cle->level();
+		row["ip"]             = cle->GetIP();
+		row["gm"]             = cle->GetGM();
+		row["race"]           = cle->race();
+		row["class"]          = cle->class_();
+		row["client_version"] = cle->GetClientVersion();
+		row["admin"]          = cle->Admin();
+		row["account_id"]     = cle->AccountID();
+		row["account_name"]   = cle->AccountName();
+		row["character_id"]   = cle->CharID();
+		row["anon"]           = cle->Anon();
+		row["guild_id"]       = cle->GuildID();
+
+		if (full_list) {
+			row["loginserver_account_id"] = cle->LSAccountID();
+			row["loginserver_id"]         = cle->LSID();
+			row["loginserver_name"]       = cle->LSName();
+			row["online"]                 = cle->Online();
+			row["world_admin"]            = cle->WorldAdmin();
+			row["guild_rank"]             = cle->GuildRank();
+			row["guild_tribute_opt_in"]   = cle->GuildTributeOptIn();
+			row["instance"]               = cle->instance();
+			row["is_local_client"]        = cle->IsLocalClient();
+			row["lfg"]                    = cle->LFG();
+			row["lfg_comments"]           = cle->GetLFGComments();
+			row["lfg_from_level"]         = cle->GetLFGFromLevel();
+			row["lfg_match_filter"]       = cle->GetLFGMatchFilter();
+			row["lfg_to_level"]           = cle->GetLFGToLevel();
+			row["tells_off"]              = cle->TellsOff();
+			row["zone"]                   = cle->zone();
+		}
 
 		auto server = cle->Server();
 		if (server) {
-			row["server"]["client_address"]       = server->GetCAddress();
-			row["server"]["client_local_address"] = server->GetCLocalAddress();
-			row["server"]["client_port"]          = server->GetCPort();
-			row["server"]["compile_time"]         = server->GetCompileTime();
-			row["server"]["id"]                   = server->GetID();
-			row["server"]["instance_id"]          = server->GetInstanceID();
-			row["server"]["ip"]                   = server->GetIP();
-			row["server"]["is_booting"]           = server->IsBootingUp();
-			row["server"]["launch_name"]          = server->GetLaunchName();
-			row["server"]["launched_name"]        = server->GetLaunchedName();
-			row["server"]["number_players"]       = server->NumPlayers();
-			row["server"]["port"]                 = server->GetPort();
-			row["server"]["previous_zone_id"]     = server->GetPrevZoneID();
-			row["server"]["static_zone"]          = server->IsStaticZone();
-			row["server"]["uui"]                  = server->GetUUID();
-			row["server"]["zone_id"]              = server->GetZoneID();
-			row["server"]["zone_long_name"]       = server->GetZoneLongName();
-			row["server"]["zone_name"]            = server->GetZoneName();
-			row["server"]["zone_os_pid"]          = server->GetZoneOSProcessID();
+			row["server"]["zone_id"]        = server->GetZoneID();
+			row["server"]["zone_long_name"] = server->GetZoneLongName();
+			row["server"]["zone_name"]      = server->GetZoneName();
+			row["server"]["zone_os_pid"]    = server->GetZoneOSProcessID();
+			row["server"]["id"]             = server->GetID();
+
+			if (full_list) {
+				row["server"]["client_address"]       = server->GetCAddress();
+				row["server"]["client_local_address"] = server->GetCLocalAddress();
+				row["server"]["client_port"]          = server->GetCPort();
+				row["server"]["compile_time"]         = server->GetCompileTime();
+				row["server"]["instance_id"]          = server->GetInstanceID();
+				row["server"]["ip"]                   = server->GetIP();
+				row["server"]["is_booting"]           = server->IsBootingUp();
+				row["server"]["launch_name"]          = server->GetLaunchName();
+				row["server"]["launched_name"]        = server->GetLaunchedName();
+				row["server"]["number_players"]       = server->NumPlayers();
+				row["server"]["port"]                 = server->GetPort();
+				row["server"]["previous_zone_id"]     = server->GetPrevZoneID();
+				row["server"]["static_zone"]          = server->IsStaticZone();
+				row["server"]["uui"]                  = server->GetUUID();
+			}
 		}
 		else {
 			row["server"] = Json::Value();
 		}
-		row["anon"]             = cle->Anon();
-		row["character_id"]     = cle->CharID();
-		row["class"]            = cle->class_();
-		row["client_version"]   = cle->GetClientVersion();
-		row["gm"]               = cle->GetGM();
-		row["guild_id"]         = cle->GuildID();
-		row["guild_rank"]       = cle->GuildRank();
-		row["guild_tribute_opt_in"] = cle->GuildTributeOptIn();
-		row["instance"]         = cle->instance();
-		row["is_local_client"]  = cle->IsLocalClient();
-		row["level"]            = cle->level();
-		row["lfg"]              = cle->LFG();
-		row["lfg_comments"]     = cle->GetLFGComments();
-		row["lfg_from_level"]   = cle->GetLFGFromLevel();
-		row["lfg_match_filter"] = cle->GetLFGMatchFilter();
-		row["lfg_to_level"]     = cle->GetLFGToLevel();
-		row["name"]             = cle->name();
-		row["race"]             = cle->race();
-		row["tells_off"]        = cle->TellsOff();
-		row["zone"]             = cle->zone();
 
 		response.append(row);
 
@@ -1849,4 +1907,99 @@ std::map<uint32, ClientListEntry *> ClientList::GetGuildClientsWithTributeOptIn(
 		Iterator.Advance();
 	}
 	return guild_members;
+}
+
+void ClientList::RebuildZoneServerCaches()
+{
+	// Clear without freeing memory (buckets stay allocated)
+	m_gm_zone_server_ids.clear();
+	m_guild_zone_server_ids.clear();
+
+	LinkedListIterator<ClientListEntry*> iterator(clientlist);
+	iterator.Reset();
+
+	while (iterator.MoreElements()) {
+		ClientListEntry* cle = iterator.GetData();
+
+		if (cle->Online() != CLE_Status::InZone || !cle->Server()) {
+			iterator.Advance();
+			continue;
+		}
+
+		uint32_t server_id = cle->Server()->GetID();
+
+		// Track GM zone server
+		if (cle->GetGM()) {
+			m_gm_zone_server_ids.insert(server_id);
+		}
+
+		// Track guild zone servers
+		if (cle->GuildID() > 0) {
+			auto& guild_set = m_guild_zone_server_ids[cle->GuildID()];
+			guild_set.insert(server_id);
+		}
+
+		iterator.Advance();
+	}
+}
+
+std::vector<uint32_t> ClientList::GetGuildZoneServers(uint32 guild_id)
+{
+	if (RuleB(World, RealTimeCalculateGuilds)) {
+		std::vector<uint32_t>        zone_server_ids;
+		std::unordered_set<uint32_t> seen_ids;
+
+		LinkedListIterator<ClientListEntry *> iterator(clientlist);
+
+		iterator.Reset();
+		while (iterator.MoreElements()) {
+			ClientListEntry *cle = iterator.GetData();
+
+			if (cle->Online() != CLE_Status::InZone) {
+				iterator.Advance();
+				continue;
+			}
+
+			if (!cle->Server()) {
+				iterator.Advance();
+				continue;
+			}
+
+			if (cle->GuildID() == guild_id) {
+				uint32_t id = cle->Server()->GetID();
+				if (seen_ids.insert(id).second) {
+					zone_server_ids.emplace_back(id);
+				}
+			}
+
+			iterator.Advance();
+		}
+
+		return zone_server_ids;
+	}
+
+	auto it = m_guild_zone_server_ids.find(guild_id);
+	if (it == m_guild_zone_server_ids.end()) {
+		return {};
+	}
+	return {it->second.begin(), it->second.end()};
+}
+
+void ClientList::AddToZoneServerCaches(ClientListEntry* cle)
+{
+	if (!cle || cle->Online() != CLE_Status::InZone || !cle->Server()) {
+		return;
+	}
+
+	uint32_t server_id = cle->Server()->GetID();
+
+	// Add GM zone server if applicable
+	if (cle->GetGM()) {
+		m_gm_zone_server_ids.insert(server_id);
+	}
+
+	// Add guild zone server if applicable
+	if (cle->GuildID() > 0) {
+		m_guild_zone_server_ids[cle->GuildID()].insert(server_id);
+	}
 }
