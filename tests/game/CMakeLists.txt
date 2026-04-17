@@ -23,6 +23,8 @@ set(game_tests_sources
 	races_test.cpp
 	fixed_var_hash_set_test.cpp
 	serialize_buffer_test.cpp
+	queue_test.cpp
+	skills_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
