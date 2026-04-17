@@ -49,6 +49,7 @@ set(game_tests_sources
 	spdat_test.cpp
 	misc2_test.cpp
 	inventory_convert_test.cpp
+	emu_constants3_test.cpp
 	md5_test.cpp
 	emu_limits_test.cpp
 	emu_opcodes_test.cpp
