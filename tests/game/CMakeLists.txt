@@ -6,6 +6,7 @@ set(game_tests_sources
 	npc_ai_util_test.cpp
 	seperator_test.cpp
 	random_test.cpp
+	checksum_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
