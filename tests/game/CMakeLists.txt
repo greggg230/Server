@@ -45,6 +45,7 @@ set(game_tests_sources
 	memory_stream_guild_test.cpp
 	textures_test.cpp
 	faction_test.cpp
+	platform_limits_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
