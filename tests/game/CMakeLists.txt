@@ -13,6 +13,7 @@ set(game_tests_sources
 	legacy_strings_test.cpp
 	math_util_test.cpp
 	eqtime_test.cpp
+	fixed_hash_set_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
