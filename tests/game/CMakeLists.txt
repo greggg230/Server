@@ -36,6 +36,7 @@ set(game_tests_sources
 	emu_constants2_test.cpp
 	emu_versions_test.cpp
 	uuid_test.cpp
+	rulesys_test.cpp
 	strings_misc_test.cpp
 	dz_lockout_test.cpp
 	strings2_test.cpp
@@ -76,6 +77,7 @@ set(game_tests_sources
 	titanium_limits_test.cpp
 	net_packet_test.cpp
 	uuid_test.cpp
+	rulesys_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
