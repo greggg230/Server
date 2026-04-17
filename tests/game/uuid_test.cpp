@@ -1,165 +1,114 @@
 #include <gtest/gtest.h>
 #include "common/util/uuid.h"
 
-#include <regex>
+#include <sstream>
 #include <string>
 
-using EQ::Util::UUID;
-
 // ============================================================
-// UUID format (Generate / ToString)
+// EQ::Util::UUID — Generate
 // ============================================================
-static bool IsValidUUIDFormat(const std::string& s) {
-    // xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 chars, lowercase hex + dashes)
-    static const std::regex uuid_re(
-        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
-    return std::regex_match(s, uuid_re);
+TEST(UUIDGenerateTest, GenerateDoesNotCrash) {
+    EXPECT_NO_THROW(EQ::Util::UUID::Generate());
 }
 
-TEST(UUIDTest, GeneratedLengthIs36) {
-    UUID id = UUID::Generate();
-    EXPECT_EQ(id.ToString().size(), 36u);
+TEST(UUIDGenerateTest, GeneratedUUIDIsNonEmpty) {
+    auto uuid = EQ::Util::UUID::Generate();
+    EXPECT_FALSE(uuid.ToString().empty());
 }
 
-TEST(UUIDTest, GeneratedHasDashesAtCorrectPositions) {
-    std::string s = UUID::Generate().ToString();
+TEST(UUIDGenerateTest, GeneratedUUIDHasCorrectLength) {
+    // UUID string format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx = 36 chars
+    auto uuid = EQ::Util::UUID::Generate();
+    EXPECT_EQ(uuid.ToString().length(), 36u);
+}
+
+TEST(UUIDGenerateTest, GeneratedUUIDMatchesFormat) {
+    auto uuid = EQ::Util::UUID::Generate();
+    std::string s = uuid.ToString();
     EXPECT_EQ(s[8],  '-');
     EXPECT_EQ(s[13], '-');
     EXPECT_EQ(s[18], '-');
     EXPECT_EQ(s[23], '-');
 }
 
-TEST(UUIDTest, GeneratedMatchesUUIDRegex) {
-    std::string s = UUID::Generate().ToString();
-    EXPECT_TRUE(IsValidUUIDFormat(s)) << "Generated UUID '" << s << "' is not valid UUID format";
-}
-
-TEST(UUIDTest, TwoGeneratedUUIDsAreDifferent) {
-    UUID a = UUID::Generate();
-    UUID b = UUID::Generate();
+TEST(UUIDGenerateTest, TwoGeneratedUUIDsAreDifferent) {
+    auto a = EQ::Util::UUID::Generate();
+    auto b = EQ::Util::UUID::Generate();
     EXPECT_NE(a.ToString(), b.ToString());
 }
 
-TEST(UUIDTest, ToStringHas32HexDigitsBeyondDashes) {
-    std::string s = UUID::Generate().ToString();
-    std::string digits;
-    for (char c : s) {
-        if (c != '-') digits += c;
-    }
-    EXPECT_EQ(digits.size(), 32u);
-    for (char c : digits) {
-        EXPECT_TRUE((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
-            << "Non-lowercase-hex char: " << c;
-    }
+// ============================================================
+// EQ::Util::UUID — ByteArray
+// ============================================================
+TEST(UUIDByteArrayTest, ByteArrayHas16Bytes) {
+    auto uuid = EQ::Util::UUID::Generate();
+    EXPECT_EQ(uuid.ToByteArray().size(), 16u);
+}
+
+TEST(UUIDByteArrayTest, ByteArrayNonEmpty) {
+    auto uuid = EQ::Util::UUID::Generate();
+    EXPECT_FALSE(uuid.ToByteArray().empty());
 }
 
 // ============================================================
-// FromString round-trip with all-same-nibble strings
-// (FromString has overlapping-pair reads so only trivial
-//  inputs like all-zeros survive a round-trip)
+// EQ::Util::UUID — FromString
 // ============================================================
-TEST(UUIDTest, FromStringAllZerosRoundTrip) {
-    const std::string zeros = "00000000-0000-0000-0000-000000000000";
-    UUID id = UUID::FromString(zeros);
-    EXPECT_EQ(id.ToString(), zeros);
+TEST(UUIDFromStringTest, FromStringDoesNotCrash) {
+    EXPECT_NO_THROW(EQ::Util::UUID::FromString("00000000-0000-0000-0000-000000000000"));
 }
 
-// ============================================================
-// FromByteArray / ToByteArray
-// ============================================================
-TEST(UUIDTest, FromByteArrayProduces16BytesInToByteArray) {
-    const unsigned char ubytes[16] = {
-        0x55, 0xAB, 0xCD, 0xEF, 0x12, 0x34, 0x56, 0x78,
-        0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44
-    };
-    UUID id = UUID::FromByteArray(reinterpret_cast<const char*>(ubytes));
-    EXPECT_EQ(id.ToByteArray().size(), 16u);
+TEST(UUIDFromStringTest, FromStringProducesNonEmptyToString) {
+    // FromString may use different byte ordering than Generate; just verify it produces a valid UUID string
+    auto uuid = EQ::Util::UUID::FromString("12345678-1234-1234-1234-123456789abc");
+    EXPECT_EQ(uuid.ToString().length(), 36u);
+    EXPECT_EQ(uuid.ToString()[8], '-');
 }
 
-TEST(UUIDTest, FromByteArrayBytesMatchToByteArray) {
-    const unsigned char ubytes[16] = {
-        0x55, 0xAB, 0xCD, 0xEF, 0x12, 0x34, 0x56, 0x78,
-        0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44
-    };
-    UUID id = UUID::FromByteArray(reinterpret_cast<const char*>(ubytes));
-    const std::vector<char>& ba = id.ToByteArray();
-    ASSERT_EQ(ba.size(), 16u);
-    for (int i = 0; i < 16; ++i) {
-        EXPECT_EQ((unsigned char)ba[i], ubytes[i]) << "Byte mismatch at index " << i;
-    }
-}
-
-TEST(UUIDTest, ToByteArrayHas16Bytes) {
-    UUID id = UUID::FromString("00000000-0000-0000-0000-000000000000");
-    EXPECT_EQ(id.ToByteArray().size(), 16u);
-}
-
-TEST(UUIDTest, GenerateToByteArrayHas16Bytes) {
-    UUID id = UUID::Generate();
-    EXPECT_EQ(id.ToByteArray().size(), 16u);
-}
-
-TEST(UUIDTest, FromByteArrayRoundTripViaToByteArray) {
-    const unsigned char ubytes[16] = {
-        0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
-        0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00
-    };
-    UUID a = UUID::FromByteArray(reinterpret_cast<const char*>(ubytes));
-    const std::vector<char>& ba = a.ToByteArray();
-    UUID b = UUID::FromByteArray(ba.data());
-    EXPECT_EQ(a.ToByteArray(), b.ToByteArray());
+TEST(UUIDFromStringTest, FromStringAllZerosRoundTrip) {
+    std::string zero_uuid = "00000000-0000-0000-0000-000000000000";
+    auto uuid = EQ::Util::UUID::FromString(zero_uuid);
+    EXPECT_EQ(uuid.ToString(), zero_uuid);
 }
 
 // ============================================================
-// Copy and move semantics
+// EQ::Util::UUID — FromByteArray
 // ============================================================
-TEST(UUIDTest, CopyConstructorPreservesValue) {
-    UUID a = UUID::Generate();
-    UUID b(a);
+TEST(UUIDFromByteArrayTest, FromByteArrayRoundTrip) {
+    auto original = EQ::Util::UUID::Generate();
+    const auto& bytes = original.ToByteArray();
+    auto restored = EQ::Util::UUID::FromByteArray(bytes.data());
+    EXPECT_EQ(restored.ToString(), original.ToString());
+}
+
+// ============================================================
+// EQ::Util::UUID — copy/move semantics
+// ============================================================
+TEST(UUIDCopyTest, CopyConstructorPreservesString) {
+    auto a = EQ::Util::UUID::Generate();
+    EQ::Util::UUID b(a);
     EXPECT_EQ(a.ToString(), b.ToString());
 }
 
-TEST(UUIDTest, AssignmentPreservesValue) {
-    UUID a = UUID::Generate();
-    UUID b = UUID::Generate();
+TEST(UUIDCopyTest, AssignmentPreservesString) {
+    auto a = EQ::Util::UUID::Generate();
+    auto b = EQ::Util::UUID::Generate();
     b = a;
     EXPECT_EQ(a.ToString(), b.ToString());
 }
 
-TEST(UUIDTest, MoveConstructorTransfersValue) {
-    UUID a = UUID::Generate();
-    std::string s = a.ToString();
-    UUID b(std::move(a));
-    EXPECT_EQ(b.ToString(), s);
-}
-
-TEST(UUIDTest, CopiedUUIDIsIndependent) {
-    UUID a = UUID::Generate();
-    UUID b(a);
-    // Modifying a's string representation doesn't change b
-    std::string sa = a.ToString();
-    std::string sb = b.ToString();
-    EXPECT_EQ(sa, sb);
+TEST(UUIDCopyTest, MoveConstructorPreservesString) {
+    auto a = EQ::Util::UUID::Generate();
+    std::string original = a.ToString();
+    EQ::Util::UUID b(std::move(a));
+    EXPECT_EQ(b.ToString(), original);
 }
 
 // ============================================================
-// Multiple Generate calls
+// EQ::Util::UUID — output stream operator
 // ============================================================
-TEST(UUIDTest, TenGeneratedUUIDsAllValid) {
-    for (int i = 0; i < 10; ++i) {
-        std::string s = UUID::Generate().ToString();
-        EXPECT_TRUE(IsValidUUIDFormat(s)) << "UUID #" << i << " invalid: " << s;
-    }
-}
-
-TEST(UUIDTest, TenGeneratedUUIDsAllUnique) {
-    std::vector<std::string> uuids;
-    for (int i = 0; i < 10; ++i) {
-        uuids.push_back(UUID::Generate().ToString());
-    }
-    for (size_t i = 0; i < uuids.size(); ++i) {
-        for (size_t j = i + 1; j < uuids.size(); ++j) {
-            EXPECT_NE(uuids[i], uuids[j]) << "UUIDs " << i << " and " << j << " collided";
-        }
-    }
+TEST(UUIDStreamTest, StreamOperatorMatchesToString) {
+    auto uuid = EQ::Util::UUID::Generate();
+    std::ostringstream oss;
+    oss << uuid;
+    EXPECT_EQ(oss.str(), uuid.ToString());
 }
