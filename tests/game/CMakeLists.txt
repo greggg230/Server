@@ -49,6 +49,7 @@ set(game_tests_sources
 	logsys_md5_test.cpp
 	endian_loot_evolving_test.cpp
 	net_crc32_cron_test.cpp
+	item_data_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
