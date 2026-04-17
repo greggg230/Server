@@ -48,6 +48,7 @@ set(game_tests_sources
 	rang_color_test.cpp
 	spdat_test.cpp
 	md5_test.cpp
+	emu_limits_test.cpp
 	strings_misc_test.cpp
 	dz_lockout_test.cpp
 	strings2_test.cpp
