@@ -31,6 +31,7 @@ set(game_tests_sources
 	eq_coord_test.cpp
 	data_util_test.cpp
 	inventory_slot_test.cpp
+	classes_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
