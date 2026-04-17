@@ -9,6 +9,7 @@ set(game_tests_sources
 	checksum_test.cpp
 	compression_test.cpp
 	strings_test.cpp
+	npc_spell_decider_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
