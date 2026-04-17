@@ -18,6 +18,7 @@ set(game_tests_sources
 	eqrand_test.cpp
 	ip_util_test.cpp
 	class_util_test.cpp
+	bodytype_deity_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
