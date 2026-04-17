@@ -28,6 +28,7 @@ set(game_tests_sources
 	linked_list_test.cpp
 	misc_test.cpp
 	timer_test.cpp
+	eq_coord_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
