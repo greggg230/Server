@@ -25,6 +25,7 @@ set(game_tests_sources
 	serialize_buffer_test.cpp
 	queue_test.cpp
 	skills_test.cpp
+	linked_list_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
