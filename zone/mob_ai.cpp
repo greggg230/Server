@@ -227,7 +227,10 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						// CanBuffStack on one random target would suppress the entire AoE if
 						// that target already has the debuff, even though other targets may not.
 						bool is_ae_hatelist = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
-						                       spells[AIspells[i].spellid].target_type == ST_HateList);
+						                       spells[AIspells[i].spellid].target_type == ST_HateList ||
+						                       spells[AIspells[i].spellid].target_type == ST_AECaster ||
+						                       spells[AIspells[i].spellid].target_type == ST_AEClientV1 ||
+						                       spells[AIspells[i].spellid].target_type == ST_AETarget);
 						if (
 							debuffee && manaR >= 10 &&
 							(bInnates || zone->random.Roll(70)) &&
@@ -253,7 +256,10 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						//     If `tar` is invulnerable, has full buff slots, or has a stacking conflict
 						//     with one of its buffs, the NPC would skip the AoE entirely — wrong.
 						bool is_ae_hatelist = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
-						                       spells[AIspells[i].spellid].target_type == ST_HateList);
+						                       spells[AIspells[i].spellid].target_type == ST_HateList ||
+						                       spells[AIspells[i].spellid].target_type == ST_AECaster ||
+						                       spells[AIspells[i].spellid].target_type == ST_AEClientV1 ||
+						                       spells[AIspells[i].spellid].target_type == ST_AETarget);
 						if (
 							manaR >= 10 &&
 							(bInnates || zone->random.Roll(70)) &&
@@ -359,19 +365,26 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						break;
 					}
 					case SpellType_DOT: {
+						bool is_ae_dot = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
+						                  spells[AIspells[i].spellid].target_type == ST_HateList ||
+						                  spells[AIspells[i].spellid].target_type == ST_AECaster ||
+						                  spells[AIspells[i].spellid].target_type == ST_AEClientV1 ||
+						                  spells[AIspells[i].spellid].target_type == ST_AETarget);
 						if (
 							(bInnates || zone->random.Roll(60))
-							&& tar->DontDotMeBefore() < Timer::GetCurrentTime()
-							&& tar->CanBuffStack(AIspells[i].spellid, GetLevel(), true) >= 0
+							&& (is_ae_dot || tar->DontDotMeBefore() < Timer::GetCurrentTime())
+							&& (is_ae_dot || tar->CanBuffStack(AIspells[i].spellid, GetLevel(), true) >= 0)
 							) {
-							if(!checked_los) {
-								if(!CheckLosFN(tar))
-									return(false);	//cannot see target... we assume that no spell is going to work since we will only be casting detrimental spells in this call
-								checked_los = true;
+							if (!is_ae_dot) {
+								if(!checked_los) {
+									if(!CheckLosFN(tar))
+										return(false);	//cannot see target... we assume that no spell is going to work since we will only be casting detrimental spells in this call
+									checked_los = true;
+								}
 							}
 							uint32 tempTime = 0;
 							AIDoSpellCast(i, tar, mana_cost, &tempTime);
-							tar->SetDontDotMeBefore(tempTime);
+							if (!is_ae_dot) tar->SetDontDotMeBefore(tempTime);
 							return true;
 						}
 						break;
