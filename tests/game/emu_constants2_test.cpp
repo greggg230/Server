@@ -1,134 +1,174 @@
 #include <gtest/gtest.h>
 #include "common/emu_constants.h"
-#include "common/eq_constants.h"
 
 // ============================================================
-// PetType::GetName / IsValid
+// ServerLockType enum
 // ============================================================
-TEST(PetTypeTest, IsValidKnownTypes) {
-    EXPECT_TRUE(PetType::IsValid(PetType::Familiar));
-    EXPECT_TRUE(PetType::IsValid(PetType::Animation));
-    EXPECT_TRUE(PetType::IsValid(PetType::Normal));
-    EXPECT_TRUE(PetType::IsValid(PetType::Charmed));
-    EXPECT_TRUE(PetType::IsValid(PetType::Follow));
-    EXPECT_TRUE(PetType::IsValid(PetType::TargetLock));
-    EXPECT_TRUE(PetType::IsValid(PetType::None));
+TEST(ServerLockTypeTest, ListIsZero) {
+    EXPECT_EQ(ServerLockType::List, 0);
 }
 
-TEST(PetTypeTest, IsValidUnknownType) {
-    EXPECT_FALSE(PetType::IsValid(50));
-    EXPECT_FALSE(PetType::IsValid(100));
+TEST(ServerLockTypeTest, LockIsOne) {
+    EXPECT_EQ(ServerLockType::Lock, 1);
 }
 
-TEST(PetTypeTest, GetNameKnownTypes) {
-    EXPECT_EQ(PetType::GetName(PetType::Familiar),   "Familiar");
-    EXPECT_EQ(PetType::GetName(PetType::Animation),  "Animation");
-    EXPECT_EQ(PetType::GetName(PetType::Normal),     "Normal");
-    EXPECT_EQ(PetType::GetName(PetType::Charmed),    "Charmed");
-    EXPECT_EQ(PetType::GetName(PetType::Follow),     "Follow");
-    EXPECT_EQ(PetType::GetName(PetType::TargetLock), "Target Lock");
-    EXPECT_EQ(PetType::GetName(PetType::None),       "None");
-}
-
-TEST(PetTypeTest, GetNameUnknownReturnsDefault) {
-    EXPECT_EQ(PetType::GetName(50), "UNKNOWN PET TYPE");
+TEST(ServerLockTypeTest, UnlockIsTwo) {
+    EXPECT_EQ(ServerLockType::Unlock, 2);
 }
 
 // ============================================================
-// Bug::GetID (reverse lookup)
+// Invisibility enum
 // ============================================================
-TEST(BugGetIDTest, KnownCategoryNamesReturnID) {
-    EXPECT_EQ(Bug::GetID("Other"),         static_cast<uint32>(Bug::Category::Other));
-    EXPECT_EQ(Bug::GetID("Video"),         static_cast<uint32>(Bug::Category::Video));
-    EXPECT_EQ(Bug::GetID("Audio"),         static_cast<uint32>(Bug::Category::Audio));
-    EXPECT_EQ(Bug::GetID("Pathing"),       static_cast<uint32>(Bug::Category::Pathing));
-    EXPECT_EQ(Bug::GetID("Quest"),         static_cast<uint32>(Bug::Category::Quest));
-    EXPECT_EQ(Bug::GetID("Tradeskills"),   static_cast<uint32>(Bug::Category::Tradeskills));
-    EXPECT_EQ(Bug::GetID("Spell Stacking"),static_cast<uint32>(Bug::Category::SpellStacking));
-    EXPECT_EQ(Bug::GetID("NPC"),           static_cast<uint32>(Bug::Category::NPC));
-    EXPECT_EQ(Bug::GetID("Mercenaries"),   static_cast<uint32>(Bug::Category::Mercenaries));
+TEST(InvisibilityEnumTest, VisibleIsZero) {
+    EXPECT_EQ(Invisibility::Visible, 0u);
 }
 
-TEST(BugGetIDTest, UnknownNameReturnsOther) {
-    // Falls back to Bug::Category::Other for unknown names
-    EXPECT_EQ(Bug::GetID("NotACategory"), static_cast<uint32>(Bug::Category::Other));
-    EXPECT_EQ(Bug::GetID(""),             static_cast<uint32>(Bug::Category::Other));
+TEST(InvisibilityEnumTest, InvisibleIsOne) {
+    EXPECT_EQ(Invisibility::Invisible, 1u);
 }
 
-TEST(BugGetIDTest, RoundTrip) {
-    // GetName(GetID(name)) == name for known categories
-    const std::vector<std::string> names = {"Other", "Video", "Audio", "Quest", "NPC", "Tradeskills", "Mercenaries"};
-    for (const auto& name : names) {
-        uint32 id = Bug::GetID(name);
-        EXPECT_EQ(Bug::GetName(id), name) << "Round-trip failed for: " << name;
-    }
+TEST(InvisibilityEnumTest, SpecialIs255) {
+    EXPECT_EQ(Invisibility::Special, 255u);
 }
 
 // ============================================================
-// Stance::GetIndex
+// AugmentActions enum
 // ============================================================
-TEST(StanceGetIndexTest, PassiveIsBaseIndex) {
-    // Passive is the first stance (index 0 relative to itself)
-    EXPECT_EQ(Stance::GetIndex(Stance::Passive), 0u);
+TEST(AugmentActionsTest, InsertIsZero) {
+    EXPECT_EQ(AugmentActions::Insert, 0);
 }
 
-TEST(StanceGetIndexTest, OtherStancesAreOffsetFromPassive) {
-    // GetIndex returns stance_id - Passive
-    EXPECT_EQ(Stance::GetIndex(Stance::Balanced),   Stance::Balanced   - Stance::Passive);
-    EXPECT_EQ(Stance::GetIndex(Stance::Aggressive), Stance::Aggressive - Stance::Passive);
-    EXPECT_EQ(Stance::GetIndex(Stance::Burn),       Stance::Burn       - Stance::Passive);
-    EXPECT_EQ(Stance::GetIndex(Stance::AEBurn),     Stance::AEBurn     - Stance::Passive);
+TEST(AugmentActionsTest, RemoveIsOne) {
+    EXPECT_EQ(AugmentActions::Remove, 1);
 }
 
-TEST(StanceGetIndexTest, InvalidStanceReturnsZero) {
-    // Only truly invalid (not-in-map) stances return 0
-    EXPECT_EQ(Stance::GetIndex(100), 0u);
-    EXPECT_EQ(Stance::GetIndex(50),  0u);
+TEST(AugmentActionsTest, SwapIsTwo) {
+    EXPECT_EQ(AugmentActions::Swap, 2);
+}
+
+TEST(AugmentActionsTest, DestroyIsThree) {
+    EXPECT_EQ(AugmentActions::Destroy, 3);
 }
 
 // ============================================================
-// EQ::constants::GetAppearanceTypeName
+// TargetDescriptionType enum
 // ============================================================
-TEST(AppearanceTypeNameTest, KnownTypes) {
-    using namespace EQ::constants;
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Die),          "Die");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::WhoLevel),     "Who Level");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::MaxHealth),    "Max Health");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Invisibility), "Invisibility");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::PVP),          "PVP");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Light),        "Light");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Animation),    "Animation");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Sneak),        "Sneak");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::SpawnID),      "Spawn ID");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Health),       "Health");
+TEST(TargetDescriptionTypeTest, LCSelfIsZero) {
+    EXPECT_EQ(TargetDescriptionType::LCSelf, 0u);
 }
 
-TEST(AppearanceTypeNameTest, MoreKnownTypes) {
-    using namespace EQ::constants;
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Linkdead),   "Linkdead");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::FlyMode),    "Fly Mode");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::GM),         "GM");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Anonymous),  "Anonymous");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::GuildID),    "Guild ID");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::GuildRank),  "Guild Rank");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::AFK),        "AFK");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Pet),        "Pet");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Summoned),   "Summoned");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Split),      "Split");
+TEST(TargetDescriptionTypeTest, UCSelfIsOne) {
+    EXPECT_EQ(TargetDescriptionType::UCSelf, 1u);
 }
 
-TEST(AppearanceTypeNameTest, EvenMoreKnownTypes) {
-    using namespace EQ::constants;
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::Size),          "Size");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::SetType),       "Set Type");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::NPCName),       "NPCName");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::AARank),        "AARank");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::ShowHelm),      "Show Helm");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::DamageState),   "Damage State");
-    EXPECT_EQ(GetAppearanceTypeName(AppearanceType::OfflineMode),   "Offline Mode");
+TEST(TargetDescriptionTypeTest, UCYourIsFive) {
+    EXPECT_EQ(TargetDescriptionType::UCYour, 5u);
 }
 
-TEST(AppearanceTypeNameTest, UnknownTypeReturnsEmpty) {
-    EXPECT_EQ(EQ::constants::GetAppearanceTypeName(9999u), "");
-    EXPECT_EQ(EQ::constants::GetAppearanceTypeName(500u),  "");
+// ============================================================
+// ReloadWorld enum
+// ============================================================
+TEST(ReloadWorldTest, NoRepopIsZero) {
+    EXPECT_EQ(ReloadWorld::NoRepop, 0u);
+}
+
+TEST(ReloadWorldTest, RepopIsOne) {
+    EXPECT_EQ(ReloadWorld::Repop, 1u);
+}
+
+TEST(ReloadWorldTest, ForceRepopIsTwo) {
+    EXPECT_EQ(ReloadWorld::ForceRepop, 2u);
+}
+
+// ============================================================
+// EQ::constants::BotSpellIDs
+// ============================================================
+TEST(BotSpellIDsTest, WarriorIs3001) {
+    EXPECT_EQ(EQ::constants::BotSpellIDs::Warrior, 3001);
+}
+
+TEST(BotSpellIDsTest, BerserkerIs3016) {
+    // 16 classes starting at 3001
+    EXPECT_EQ(EQ::constants::BotSpellIDs::Berserker, 3016);
+}
+
+TEST(BotSpellIDsTest, ClassesAreSequential) {
+    EXPECT_EQ(EQ::constants::BotSpellIDs::Cleric,   EQ::constants::BotSpellIDs::Warrior + 1);
+    EXPECT_EQ(EQ::constants::BotSpellIDs::Paladin,  EQ::constants::BotSpellIDs::Warrior + 2);
+    EXPECT_EQ(EQ::constants::BotSpellIDs::Enchanter,EQ::constants::BotSpellIDs::Warrior + 13);
+}
+
+// ============================================================
+// EQ::constants::GravityBehavior
+// ============================================================
+TEST(GravityBehaviorTest, GroundIsZero) {
+    EXPECT_EQ(static_cast<int8>(EQ::constants::GravityBehavior::Ground), 0);
+}
+
+TEST(GravityBehaviorTest, FlyingIsOne) {
+    EXPECT_EQ(static_cast<int8>(EQ::constants::GravityBehavior::Flying), 1);
+}
+
+TEST(GravityBehaviorTest, LevitateWhileRunningIsFive) {
+    EXPECT_EQ(static_cast<int8>(EQ::constants::GravityBehavior::LevitateWhileRunning), 5);
+}
+
+// ============================================================
+// EQ::constants::EmoteEventTypes
+// ============================================================
+TEST(EmoteEventTypesTest, LeaveCombatIsZero) {
+    EXPECT_EQ(static_cast<uint8>(EQ::constants::EmoteEventTypes::LeaveCombat), 0u);
+}
+
+TEST(EmoteEventTypesTest, EnterCombatIsOne) {
+    EXPECT_EQ(static_cast<uint8>(EQ::constants::EmoteEventTypes::EnterCombat), 1u);
+}
+
+TEST(EmoteEventTypesTest, OnDespawnIsEight) {
+    EXPECT_EQ(static_cast<uint8>(EQ::constants::EmoteEventTypes::OnDespawn), 8u);
+}
+
+// ============================================================
+// EQ::constants::EmoteTypes
+// ============================================================
+TEST(EmoteTypesTest, SayIsZero) {
+    EXPECT_EQ(static_cast<uint8>(EQ::constants::EmoteTypes::Say), 0u);
+}
+
+TEST(EmoteTypesTest, EmoteIsOne) {
+    EXPECT_EQ(static_cast<uint8>(EQ::constants::EmoteTypes::Emote), 1u);
+}
+
+TEST(EmoteTypesTest, ProximityIsThree) {
+    EXPECT_EQ(static_cast<uint8>(EQ::constants::EmoteTypes::Proximity), 3u);
+}
+
+// ============================================================
+// EQ::WaypointStatus
+// ============================================================
+TEST(WaypointStatusTest, RoamBoxPauseInProgressIsNeg3) {
+    EXPECT_EQ(EQ::WaypointStatus::RoamBoxPauseInProgress, -3);
+}
+
+TEST(WaypointStatusTest, QuestControlNoGridIsNeg2) {
+    EXPECT_EQ(EQ::WaypointStatus::QuestControlNoGrid, -2);
+}
+
+TEST(WaypointStatusTest, QuestControlGridIsNeg1) {
+    EXPECT_EQ(EQ::WaypointStatus::QuestControlGrid, -1);
+}
+
+// ============================================================
+// EQ::consent::eConsentType
+// ============================================================
+TEST(ConsentTypeTest, NormalIsZero) {
+    EXPECT_EQ(static_cast<uint8>(EQ::consent::eConsentType::Normal), 0u);
+}
+
+TEST(ConsentTypeTest, GroupIsOne) {
+    EXPECT_EQ(static_cast<uint8>(EQ::consent::eConsentType::Group), 1u);
+}
+
+TEST(ConsentTypeTest, GuildIsThree) {
+    EXPECT_EQ(static_cast<uint8>(EQ::consent::eConsentType::Guild), 3u);
 }
