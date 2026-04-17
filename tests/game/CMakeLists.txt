@@ -15,6 +15,7 @@ set(game_tests_sources
 	eqtime_test.cpp
 	fixed_hash_set_test.cpp
 	memory_buffer_test.cpp
+	eqrand_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
