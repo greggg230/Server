@@ -50,6 +50,7 @@ set(game_tests_sources
 	md5_test.cpp
 	emu_limits_test.cpp
 	emu_opcodes_test.cpp
+	rof2_limits_test.cpp
 	strings_misc_test.cpp
 	dz_lockout_test.cpp
 	strings2_test.cpp
@@ -82,7 +83,6 @@ set(game_tests_sources
 	serverinfo_timeoutmgr_test.cpp
 	packet_dump_packetfile_test.cpp
 	json_config_servertalk_test.cpp
-	rof2_limits_test.cpp
 	rof_limits_test.cpp
 	sod_limits_test.cpp
 	uf_limits_test.cpp
