@@ -21,6 +21,7 @@ set(game_tests_sources
 	bodytype_deity_test.cpp
 	light_source_test.cpp
 	races_test.cpp
+	fixed_var_hash_set_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
