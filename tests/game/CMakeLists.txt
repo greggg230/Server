@@ -47,6 +47,7 @@ set(game_tests_sources
 	faction_test.cpp
 	platform_limits_test.cpp
 	logsys_md5_test.cpp
+	endian_loot_evolving_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
