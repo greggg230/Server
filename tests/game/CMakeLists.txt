@@ -56,6 +56,7 @@ set(game_tests_sources
 	bodytypes_test.cpp
 	platform_emulimits_test.cpp
 	eqemu_exception_test.cpp
+	data_verification_version_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
