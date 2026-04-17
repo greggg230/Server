@@ -48,3 +48,5 @@ endif()
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set_property(TARGET tests PROPERTY FOLDER executables/tests)
+
+add_subdirectory(game)

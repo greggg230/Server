@@ -226,11 +226,7 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						// that one mob. Per-target LoS is enforced inside HateList::SpellCast().
 						// CanBuffStack on one random target would suppress the entire AoE if
 						// that target already has the debuff, even though other targets may not.
-						bool is_ae_hatelist = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
-						                       spells[AIspells[i].spellid].target_type == ST_HateList ||
-						                       spells[AIspells[i].spellid].target_type == ST_AECaster ||
-						                       spells[AIspells[i].spellid].target_type == ST_AEClientV1 ||
-						                       spells[AIspells[i].spellid].target_type == ST_AETarget);
+						bool is_ae_hatelist = NPCAIUtil::IsAETargetType(spells[AIspells[i].spellid].target_type);
 						if (
 							debuffee && manaR >= 10 &&
 							(bInnates || zone->random.Roll(70)) &&
@@ -255,11 +251,7 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						//   - CanBuffStack on `tar`: the AoE is not placing a buff on `tar` alone.
 						//     If `tar` is invulnerable, has full buff slots, or has a stacking conflict
 						//     with one of its buffs, the NPC would skip the AoE entirely — wrong.
-						bool is_ae_hatelist = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
-						                       spells[AIspells[i].spellid].target_type == ST_HateList ||
-						                       spells[AIspells[i].spellid].target_type == ST_AECaster ||
-						                       spells[AIspells[i].spellid].target_type == ST_AEClientV1 ||
-						                       spells[AIspells[i].spellid].target_type == ST_AETarget);
+						bool is_ae_hatelist = NPCAIUtil::IsAETargetType(spells[AIspells[i].spellid].target_type);
 						if (
 							manaR >= 10 &&
 							(bInnates || zone->random.Roll(70)) &&
@@ -365,11 +357,7 @@ bool NPC::AICastSpell(Mob* tar, uint8 iChance, uint32 iSpellTypes, bool bInnates
 						break;
 					}
 					case SpellType_DOT: {
-						bool is_ae_dot = (spells[AIspells[i].spellid].target_type == ST_AETargetHateList ||
-						                  spells[AIspells[i].spellid].target_type == ST_HateList ||
-						                  spells[AIspells[i].spellid].target_type == ST_AECaster ||
-						                  spells[AIspells[i].spellid].target_type == ST_AEClientV1 ||
-						                  spells[AIspells[i].spellid].target_type == ST_AETarget);
+						bool is_ae_dot = NPCAIUtil::IsAETargetType(spells[AIspells[i].spellid].target_type);
 						if (
 							(bInnates || zone->random.Roll(60))
 							&& (is_ae_dot || tar->DontDotMeBefore() < Timer::GetCurrentTime())
