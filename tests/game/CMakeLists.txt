@@ -51,6 +51,7 @@ set(game_tests_sources
 	net_crc32_cron_test.cpp
 	item_data_test.cpp
 	argh_misc_test.cpp
+	dynamic_zone_types_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
