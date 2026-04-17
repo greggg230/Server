@@ -143,7 +143,7 @@ uint64 hextoi64(const char *num)
 	}
 
 	uint64   ret = 0;
-	int      mul = 1;
+	uint64   mul = 1;
 	for (int i   = len - 1; i >= 2; i--) {
 		if (num[i] >= 'A' && num[i] <= 'F') {
 			ret += ((num[i] - 'A') + 10) * mul;
