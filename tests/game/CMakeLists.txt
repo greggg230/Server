@@ -65,6 +65,7 @@ set(game_tests_sources
 	net_util_test.cpp
 	file_util_test.cpp
 	profanity_rdtsc_test.cpp
+	serverinfo_timeoutmgr_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
