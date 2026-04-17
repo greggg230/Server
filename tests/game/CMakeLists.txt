@@ -70,6 +70,7 @@ set(game_tests_sources
 	json_config_servertalk_test.cpp
 	rof2_limits_test.cpp
 	rof_limits_test.cpp
+	sod_limits_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
