@@ -64,6 +64,7 @@ set(game_tests_sources
 	exception_constants_test.cpp
 	net_util_test.cpp
 	file_util_test.cpp
+	profanity_rdtsc_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
