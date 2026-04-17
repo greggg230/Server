@@ -71,6 +71,7 @@ set(game_tests_sources
 	rof2_limits_test.cpp
 	rof_limits_test.cpp
 	sod_limits_test.cpp
+	uf_limits_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
