@@ -47,6 +47,7 @@ set(game_tests_sources
 	reliable_stream_structs_test.cpp
 	rang_color_test.cpp
 	spdat_test.cpp
+	misc2_test.cpp
 	md5_test.cpp
 	emu_limits_test.cpp
 	emu_opcodes_test.cpp
