@@ -68,6 +68,7 @@ set(game_tests_sources
 	serverinfo_timeoutmgr_test.cpp
 	packet_dump_packetfile_test.cpp
 	json_config_servertalk_test.cpp
+	rof2_limits_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
