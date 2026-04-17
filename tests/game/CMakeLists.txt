@@ -54,6 +54,7 @@ set(game_tests_sources
 	dynamic_zone_types_test.cpp
 	event_sub_player_event_test.cpp
 	bodytypes_test.cpp
+	platform_emulimits_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
