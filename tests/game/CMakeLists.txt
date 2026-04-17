@@ -74,6 +74,7 @@ set(game_tests_sources
 	uf_limits_test.cpp
 	sof_limits_test.cpp
 	titanium_limits_test.cpp
+	net_packet_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
