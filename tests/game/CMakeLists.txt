@@ -11,6 +11,7 @@ set(game_tests_sources
 	strings_test.cpp
 	npc_spell_decider_test.cpp
 	legacy_strings_test.cpp
+	math_util_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
