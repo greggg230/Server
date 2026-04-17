@@ -48,6 +48,7 @@ set(game_tests_sources
 	rang_color_test.cpp
 	spdat_test.cpp
 	misc2_test.cpp
+	inventory_convert_test.cpp
 	md5_test.cpp
 	emu_limits_test.cpp
 	emu_opcodes_test.cpp
