@@ -59,6 +59,7 @@ set(game_tests_sources
 	data_verification_version_test.cpp
 	lagged_fibonacci_test.cpp
 	opcodes_misc_float_test.cpp
+	packet_functions_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
