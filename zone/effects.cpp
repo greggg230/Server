@@ -1199,11 +1199,16 @@ void EntityList::AESpell(
 				continue;
 			}
 
-			if (center_mob && !spells[spell_id].npc_no_los && !caster_mob->CheckLosFN(current_mob)) {
+			// Only check line-of-sight in indoor zones. In outdoor zones (castoutdoor=1),
+			// AE spells should not be blocked by geometry -- hiding behind a building in
+			// an outdoor zone like Plane of Fear should not protect against AE spells.
+			const bool check_ae_los = !zone->CanCastOutdoor() && !spells[spell_id].npc_no_los;
+
+			if (center_mob && check_ae_los && !caster_mob->CheckLosFN(current_mob)) {
 				continue;
 			}
 
-			if (!center_mob && !spells[spell_id].npc_no_los && !caster_mob->CheckLosFN(
+			if (!center_mob && check_ae_los && !caster_mob->CheckLosFN(
 				caster_mob->GetTargetRingX(),
 				caster_mob->GetTargetRingY(),
 				caster_mob->GetTargetRingZ(),
