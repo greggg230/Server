@@ -46,6 +46,7 @@ set(game_tests_sources
 	memory_mapped_file_test.cpp
 	reliable_stream_structs_test.cpp
 	rang_color_test.cpp
+	spdat_test.cpp
 	strings_misc_test.cpp
 	dz_lockout_test.cpp
 	strings2_test.cpp
