@@ -123,6 +123,6 @@ namespace EQ
 	};
 
 	bool operator==(const InventorySlot& lhs, const InventorySlot& rhs);
-	bool operator!=(const InventorySlot& lhs, const InventorySlot& rhs) { return (!(lhs == rhs)); }
+	inline bool operator!=(const InventorySlot& lhs, const InventorySlot& rhs) { return (!(lhs == rhs)); }
 
 } /*EQEmu*/
