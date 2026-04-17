@@ -42,6 +42,7 @@ set(game_tests_sources
 	eq_constants_test.cpp
 	eq_constants2_test.cpp
 	server_reload_ptimer_test.cpp
+	memory_stream_guild_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
