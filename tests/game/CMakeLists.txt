@@ -44,6 +44,7 @@ set(game_tests_sources
 	packet_structs_test.cpp
 	process_eqconst_test.cpp
 	memory_mapped_file_test.cpp
+	reliable_stream_structs_test.cpp
 	strings_misc_test.cpp
 	dz_lockout_test.cpp
 	strings2_test.cpp
