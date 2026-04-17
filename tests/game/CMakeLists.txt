@@ -22,6 +22,7 @@ set(game_tests_sources
 	light_source_test.cpp
 	races_test.cpp
 	fixed_var_hash_set_test.cpp
+	serialize_buffer_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
