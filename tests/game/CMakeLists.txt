@@ -33,6 +33,7 @@ set(game_tests_sources
 	inventory_slot_test.cpp
 	classes_test.cpp
 	emu_constants_test.cpp
+	emu_constants2_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
