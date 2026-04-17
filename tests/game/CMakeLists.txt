@@ -63,6 +63,7 @@ set(game_tests_sources
 	emu_opcodes_structs_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
+	file_util_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
