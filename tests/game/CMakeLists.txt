@@ -29,6 +29,7 @@ set(game_tests_sources
 	misc_test.cpp
 	timer_test.cpp
 	eq_coord_test.cpp
+	data_util_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
