@@ -51,6 +51,7 @@ set(game_tests_sources
 	emu_limits_test.cpp
 	emu_opcodes_test.cpp
 	rof2_limits_test.cpp
+	directory_test.cpp
 	strings_misc_test.cpp
 	dz_lockout_test.cpp
 	strings2_test.cpp
