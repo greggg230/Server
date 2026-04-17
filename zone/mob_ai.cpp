@@ -28,6 +28,7 @@
 #include "zone/client.h"
 #include "zone/entity.h"
 #include "zone/fastmath.h"
+#include "common/npc_ai_util.h"
 #include "zone/map.h"
 #include "zone/npc.h"
 #include "zone/quest_parser_collection.h"
