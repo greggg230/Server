@@ -32,6 +32,7 @@ set(game_tests_sources
 	data_util_test.cpp
 	inventory_slot_test.cpp
 	classes_test.cpp
+	emu_constants_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
