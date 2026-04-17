@@ -34,6 +34,7 @@ set(game_tests_sources
 	classes_test.cpp
 	emu_constants_test.cpp
 	emu_constants2_test.cpp
+	emu_versions_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
