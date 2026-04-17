@@ -38,6 +38,7 @@ set(game_tests_sources
 	uuid_test.cpp
 	rulesys_test.cpp
 	strings3_test.cpp
+	expansion_test.cpp
 	strings_misc_test.cpp
 	dz_lockout_test.cpp
 	strings2_test.cpp
@@ -77,9 +78,6 @@ set(game_tests_sources
 	sof_limits_test.cpp
 	titanium_limits_test.cpp
 	net_packet_test.cpp
-	uuid_test.cpp
-	rulesys_test.cpp
-	strings3_test.cpp
 )
 
 add_executable(game_tests ${game_tests_sources})
