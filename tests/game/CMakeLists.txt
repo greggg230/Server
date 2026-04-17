@@ -41,6 +41,7 @@ set(game_tests_sources
 	expansion_test.cpp
 	uri_parse_test.cpp
 	eq_constants3_test.cpp
+	packet_structs_test.cpp
 	strings_misc_test.cpp
 	dz_lockout_test.cpp
 	strings2_test.cpp
