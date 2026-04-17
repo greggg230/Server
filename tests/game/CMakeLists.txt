@@ -49,6 +49,7 @@ set(game_tests_sources
 	spdat_test.cpp
 	md5_test.cpp
 	emu_limits_test.cpp
+	emu_opcodes_test.cpp
 	strings_misc_test.cpp
 	dz_lockout_test.cpp
 	strings2_test.cpp
