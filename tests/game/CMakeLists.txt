@@ -39,6 +39,7 @@ set(game_tests_sources
 	strings_misc_test.cpp
 	dz_lockout_test.cpp
 	strings2_test.cpp
+	eq_constants_test.cpp
 	exception_constants_test.cpp
 	net_util_test.cpp
 )
